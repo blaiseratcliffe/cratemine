@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getValidToken } from "@/lib/session";
+import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
 import type { SCPlaylist } from "@/lib/soundcloud/types";
 
@@ -13,7 +13,7 @@ interface PlaylistsPage {
  * Supports cursor-based pagination via ?cursor query param.
  */
 export async function GET(request: NextRequest) {
-  const token = await getValidToken();
+  const token = await getValidSCToken();
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getValidToken } from "@/lib/session";
+import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
 import type { SCUser } from "@/lib/soundcloud/types";
 
 export async function GET() {
-  const token = await getValidToken();
+  const token = await getValidSCToken();
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }

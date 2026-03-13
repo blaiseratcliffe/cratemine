@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getValidToken } from "@/lib/session";
+import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { readFile, unlink, readdir } from "fs/promises";
 import path from "path";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || "/tmp/downloads";
 
@@ -25,26 +25,30 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = await getValidToken();
+  const token = await getValidSCToken();
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const { id } = await params;
 
+  // Validate track ID is numeric
+  if (!/^\d+$/.test(id)) {
+    return NextResponse.json({ error: "Invalid track ID" }, { status: 400 });
+  }
+
   // Fetch track metadata for filename
   const res = await scReq<TrackMeta>("GET", `/tracks/${id}`, token);
   if (res.status !== 200 || !res.json) {
     return NextResponse.json(
-      { error: `Failed to fetch track (${res.status})` },
+      { error: "Failed to fetch track" },
       { status: res.status || 500 }
     );
   }
 
   const track = res.json;
-  const safeFilename = `${track.user.username} - ${track.title}`.replace(
-    /[<>:"/\\|?*]/g,
-    "_"
+  const safeFilename = sanitizeFilename(
+    `${track.user.username} - ${track.title}`
   );
 
   // Try yt-dlp first
@@ -59,11 +63,7 @@ export async function GET(
       unlink(filePath).catch(() => {});
 
       return new NextResponse(fileBuffer, {
-        headers: {
-          "Content-Type": mimeType,
-          "Content-Length": String(fileBuffer.length),
-          "Content-Disposition": `attachment; filename="${safeFilename}.${ext}"`,
-        },
+        headers: buildDownloadHeaders(safeFilename, ext, mimeType, fileBuffer.length),
       });
     } catch (err) {
       console.error(`[stream] Failed to read downloaded file:`, err);
@@ -75,17 +75,62 @@ export async function GET(
   return await apiFallback(id, token, safeFilename);
 }
 
+/** Sanitize filename: strip dangerous chars, newlines, null bytes, limit length */
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/[<>:"/\\|?*\r\n\0]/g, "_")
+    .replace(/\.\./g, "_")
+    .slice(0, 200);
+}
+
+/** Build RFC 6266 compliant download headers */
+function buildDownloadHeaders(
+  filename: string,
+  ext: string,
+  mimeType: string,
+  contentLength?: number
+): Record<string, string> {
+  const encoded = encodeURIComponent(`${filename}.${ext}`);
+  const headers: Record<string, string> = {
+    "Content-Type": mimeType,
+    "Content-Disposition": `attachment; filename="${encoded}"; filename*=UTF-8''${encoded}`,
+  };
+  if (contentLength) {
+    headers["Content-Length"] = String(contentLength);
+  }
+  return headers;
+}
+
+/** Validate that a permalink URL is a SoundCloud URL */
+function isSoundCloudUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.hostname === "soundcloud.com" ||
+      parsed.hostname.endsWith(".soundcloud.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function downloadWithYtdlp(
   trackId: string,
   permalinkUrl: string
 ): Promise<{ filePath: string; mimeType: string; ext: string } | null> {
-  const outTemplate = path.join(DOWNLOAD_DIR, `${trackId}.%(ext)s`);
-  // Use the permalink URL which yt-dlp handles best
-  const url = permalinkUrl || `https://api.soundcloud.com/tracks/${trackId}`;
+  // Validate and resolve the download directory
+  const resolvedDir = path.resolve(DOWNLOAD_DIR);
+  const outTemplate = path.join(resolvedDir, `${trackId}.%(ext)s`);
+
+  // Only use permalink if it's a valid SoundCloud URL
+  const url =
+    permalinkUrl && isSoundCloudUrl(permalinkUrl)
+      ? permalinkUrl
+      : `https://soundcloud.com/tracks/${trackId}`;
 
   try {
-    // Check if yt-dlp is available
-    await execAsync("yt-dlp --version");
+    // Check if yt-dlp is available (safe: no user input)
+    await execFileAsync("yt-dlp", ["--version"]);
   } catch {
     console.log(`[stream] yt-dlp not available`);
     return null;
@@ -93,8 +138,20 @@ async function downloadWithYtdlp(
 
   try {
     console.log(`[stream] Downloading track ${trackId} via yt-dlp`);
-    const { stderr } = await execAsync(
-      `yt-dlp --no-playlist --no-overwrites -x --audio-format mp3 -o "${outTemplate}" "${url}"`,
+
+    // Use execFile with argument array — prevents shell injection
+    const { stderr } = await execFileAsync(
+      "yt-dlp",
+      [
+        "--no-playlist",
+        "--no-overwrites",
+        "-x",
+        "--audio-format",
+        "mp3",
+        "-o",
+        outTemplate,
+        url,
+      ],
       { timeout: 60_000 }
     );
 
@@ -103,15 +160,23 @@ async function downloadWithYtdlp(
     }
 
     // Find the downloaded file
-    const files = await readdir(DOWNLOAD_DIR);
+    const files = await readdir(resolvedDir);
     const match = files.find((f) => f.startsWith(`${trackId}.`));
 
     if (!match) {
-      console.error(`[stream] yt-dlp completed but no file found for ${trackId}`);
+      console.error(
+        `[stream] yt-dlp completed but no file found for ${trackId}`
+      );
       return null;
     }
 
-    const filePath = path.join(DOWNLOAD_DIR, match);
+    // Verify the file is inside the download directory (prevent traversal)
+    const filePath = path.resolve(resolvedDir, match);
+    if (!filePath.startsWith(resolvedDir)) {
+      console.error(`[stream] Path traversal detected: ${filePath}`);
+      return null;
+    }
+
     const ext = path.extname(match).slice(1);
     const mimeType =
       ext === "mp3"
@@ -143,7 +208,11 @@ async function apiFallback(
     preview_mp3_128_url?: string;
   }
 
-  const res = await scReq<TrackWithPreview>("GET", `/tracks/${trackId}`, token);
+  const res = await scReq<TrackWithPreview>(
+    "GET",
+    `/tracks/${trackId}`,
+    token
+  );
   const track = res.json;
   const audioUrl = track?.stream_url || track?.preview_mp3_128_url;
 
@@ -159,7 +228,6 @@ async function apiFallback(
   });
 
   if (!audioRes.ok) {
-    // Try without auth
     const publicRes = await fetch(audioUrl);
     if (!publicRes.ok) {
       return NextResponse.json(
@@ -175,15 +243,19 @@ async function apiFallback(
 
 function streamResponse(res: Response, filename: string) {
   const contentType = res.headers.get("content-type") || "audio/mpeg";
-  const ext = contentType.includes("mpeg") || contentType.includes("mp3") ? "mp3" : "m4a";
+  const ext =
+    contentType.includes("mpeg") || contentType.includes("mp3")
+      ? "mp3"
+      : "m4a";
 
   return new NextResponse(res.body, {
-    headers: {
-      "Content-Type": contentType,
-      "Content-Disposition": `attachment; filename="${filename}.${ext}"`,
-      ...(res.headers.get("content-length")
-        ? { "Content-Length": res.headers.get("content-length")! }
-        : {}),
-    },
+    headers: buildDownloadHeaders(
+      filename,
+      ext,
+      contentType,
+      res.headers.get("content-length")
+        ? parseInt(res.headers.get("content-length")!)
+        : undefined
+    ),
   });
 }

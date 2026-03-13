@@ -1,6 +1,27 @@
 import { SC_API_BASE } from "@/lib/config";
 import type { SCReqResult } from "./types";
 
+const ALLOWED_SC_HOSTS = [
+  "api.soundcloud.com",
+  "api-v2.soundcloud.com",
+  "api-mobi.soundcloud.com",
+  "secure.soundcloud.com",
+];
+
+/**
+ * Validate that a URL belongs to SoundCloud's API.
+ */
+function isSoundCloudApiUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_SC_HOSTS.some(
+      (host) => parsed.hostname === host
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * SoundCloud API request helper — direct port of R sc_req().
  * Retries on 429 (up to 6 attempts) and 5xx (up to 4 attempts).
@@ -18,9 +39,20 @@ export async function scReq<T = unknown>(
 ): Promise<SCReqResult<T>> {
   const { query, body, timeoutMs = 60_000 } = options;
 
-  let url = pathOrUrl.startsWith("http")
-    ? pathOrUrl
-    : `${SC_API_BASE}${pathOrUrl}`;
+  let url: string;
+  if (pathOrUrl.startsWith("http")) {
+    // Validate external URLs are SoundCloud API domains
+    if (!isSoundCloudApiUrl(pathOrUrl)) {
+      return {
+        status: 400,
+        json: null,
+        text: "URL is not a valid SoundCloud API endpoint",
+      };
+    }
+    url = pathOrUrl;
+  } else {
+    url = `${SC_API_BASE}${pathOrUrl}`;
+  }
 
   if (query) {
     const params = new URLSearchParams(query);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getValidToken } from "@/lib/session";
+import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
 import type { SCTrackRaw } from "@/lib/soundcloud/types";
 
@@ -10,12 +10,15 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const token = await getValidToken();
+  const token = await getValidSCToken();
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   const { id } = await params;
+  if (!/^\d+$/.test(id)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  }
   const tracks: SCTrackRaw[] = [];
   let url: string | null = `/playlists/${id}/tracks`;
   const query: Record<string, string> = {

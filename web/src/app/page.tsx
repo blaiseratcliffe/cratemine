@@ -1,37 +1,43 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { SignInButtons } from "@/components/SignInButtons";
 
 export default async function Home() {
-  const session = await getSession();
+  const session = await auth();
 
-  if (session.tokens) {
-    redirect("/dashboard");
+  if (session?.user?.id) {
+    // Check if SC is linked
+    const sc = await prisma.soundCloudAccount.findUnique({
+      where: { userId: session.user.id },
+      select: { id: true },
+    });
+    if (sc) {
+      redirect("/dashboard");
+    } else {
+      redirect("/link-soundcloud");
+    }
   }
 
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <main className="max-w-2xl mx-auto px-6 text-center space-y-8">
+        <p className="text-sm text-orange-400 font-medium">Step 1 of 2</p>
         <img
           src="/cratemine_logo.png"
           alt="CrateMine"
           className="h-[560px] mx-auto"
         />
-        <p className="text-xl text-zinc-400 leading-relaxed">
-          Search SoundCloud for playlists, merge their tracks, deduplicate,
-          score by popularity, and create a new mega playlist on your account.
-        </p>
-
-        <div className="space-y-4">
-          <a
-            href="/api/auth/login"
-            className="inline-block px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white text-lg font-medium rounded-lg transition-colors"
-          >
-            Connect with SoundCloud
-          </a>
-          <p className="text-sm text-zinc-600">
-            We only access your playlists. You can disconnect at any time.
-          </p>
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-2">Sign In</h1>
+          <p className="text-zinc-400">Choose your preferred method.</p>
         </div>
+
+        <SignInButtons />
+
+        <p className="text-sm text-zinc-600">
+          After signing in, you&apos;ll link your SoundCloud account.
+        </p>
 
         <div className="grid grid-cols-3 gap-6 pt-8 border-t border-zinc-800">
           <div>

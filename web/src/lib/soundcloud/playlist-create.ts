@@ -53,12 +53,6 @@ async function putPlaylistTracks(
     },
   };
 
-  // Debug: log the exact body we're sending
-  const jsonBody = JSON.stringify(payload);
-  console.log(`[PlaylistCreate] PUT /playlists/${playlistId} — ${cleanIds.length} tracks`);
-  console.log(`[PlaylistCreate] RAW BODY: ${jsonBody.slice(0, 500)}`);
-  console.log(`[PlaylistCreate] BODY TYPE: ${typeof jsonBody}`);
-
   const res = await scReq(
     "PUT",
     `/playlists/${playlistId}`,

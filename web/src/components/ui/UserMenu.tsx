@@ -9,9 +9,9 @@ interface UserMenuProps {
     username: string;
     avatar_url: string;
     permalink_url: string;
-    full_name?: string;
-    first_name?: string;
-    last_name?: string;
+    authName?: string;
+    authEmail?: string;
+    authImage?: string;
   };
   onLogout: () => void;
 }
@@ -26,10 +26,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const displayName =
-    user.full_name ||
-    [user.first_name, user.last_name].filter(Boolean).join(" ") ||
-    user.username;
+  const displayName = user.authName || user.username;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -62,14 +59,14 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
           onClick={() => setOpen(!open)}
           className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors cursor-pointer"
         >
-          {user.avatar_url && (
+          {(user.authImage || user.avatar_url) && (
             <img
-              src={user.avatar_url}
+              src={user.authImage || user.avatar_url}
               alt=""
               className="w-7 h-7 rounded-full"
             />
           )}
-          <span>{user.username}</span>
+          <span>{displayName}</span>
           <svg
             className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}
             fill="none"
@@ -95,12 +92,22 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
               <p className="text-sm text-white font-medium truncate">
                 {displayName}
               </p>
+              {user.authEmail && (
+                <p className="text-xs text-zinc-500 truncate">
+                  {user.authEmail}
+                </p>
+              )}
             </div>
             <div className="px-4 py-3 border-b border-zinc-800">
               <p className="text-xs text-zinc-500 uppercase tracking-wide">
                 SoundCloud account
               </p>
-              <p className="text-sm text-zinc-300 font-mono">{user.id}</p>
+              <p className="text-sm text-zinc-300">
+                {user.username}
+                <span className="text-zinc-500 font-mono text-xs ml-2">
+                  #{user.id}
+                </span>
+              </p>
             </div>
 
             {/* Menu items */}

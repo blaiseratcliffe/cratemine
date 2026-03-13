@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getValidToken } from "@/lib/session";
+import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { addTracksSafe } from "@/lib/soundcloud/playlist-create";
+import { verifyCsrf } from "@/lib/csrf";
 
 /**
  * Add tracks to a playlist with 422 recovery.
  * POST body: { playlistId: number, knownGoodIds: number[], newIds: number[] }
  */
 export async function POST(request: NextRequest) {
-  const token = await getValidToken();
+  const csrfError = verifyCsrf(request);
+  if (csrfError) return csrfError;
+
+  const token = await getValidSCToken();
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getValidToken } from "@/lib/session";
+import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
 import type { SCSearchResponse } from "@/lib/soundcloud/types";
 
@@ -9,7 +9,7 @@ import type { SCSearchResponse } from "@/lib/soundcloud/types";
  * Returns: { playlists: SCPlaylist[], nextCursor: string | null }
  */
 export async function POST(request: NextRequest) {
-  const token = await getValidToken();
+  const token = await getValidSCToken();
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
   if (res.status !== 200 || !res.json) {
     return NextResponse.json(
-      { error: `Search failed (${res.status})`, detail: res.text },
+      { error: "Search failed" },
       { status: res.status || 500 }
     );
   }
