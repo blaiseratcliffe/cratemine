@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+build/
+
+# env files
+.env*
+!.env.local.example
+
+# misc
+.DS_Store
+*.pem
+.vercel
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# R
+.Rhistory
+.RData
+.Rproj.user
+
+# claude code
+.claude/
