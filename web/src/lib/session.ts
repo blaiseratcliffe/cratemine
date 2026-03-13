@@ -10,24 +10,27 @@ export interface SessionData {
   oauthState?: string;
 }
 
-const secret = process.env.SESSION_SECRET || process.env.AUTH_SECRET;
-if (!secret || secret.length < 32) {
-  throw new Error(
-    "SESSION_SECRET or AUTH_SECRET environment variable must be set (min 32 chars)"
-  );
+function getSecret(): string {
+  const secret = process.env.SESSION_SECRET || process.env.AUTH_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "SESSION_SECRET or AUTH_SECRET environment variable must be set (min 32 chars)"
+    );
+  }
+  return secret;
 }
 
-const sessionOptions: SessionOptions = {
-  password: secret,
-  cookieName: "cratemine_sc_link",
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
-  },
-};
-
 export async function getSession() {
+  const sessionOptions: SessionOptions = {
+    password: getSecret(),
+    cookieName: "cratemine_sc_link",
+    cookieOptions: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax" as const,
+    },
+  };
+
   const cookieStore = await cookies();
   return getIronSession<SessionData>(cookieStore, sessionOptions);
 }
