@@ -2,7 +2,8 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile"
+    "dockerfilePath": "web/Dockerfile",
+    "watchPatterns": ["web/**"]
   },
   "deploy": {
     "restartPolicyType": "ON_FAILURE",
