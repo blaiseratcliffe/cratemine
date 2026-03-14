@@ -82,9 +82,10 @@ export function SavedSearches({ type, currentConfig, onLoad }: Props) {
     }
   }
 
-  const canSave = limit > 0 || limit === 0; // 0 = unlimited (admin) or no saves (free)
-  const atLimit = limit > 0 && count >= limit;
-  const isFreePlan = limit === 0 && count === 0 && searches.length === 0;
+  // limit: -1 = unlimited, 0 = none (free), >0 = capped
+  const isUnlimited = limit === -1;
+  const atLimit = !isUnlimited && limit > 0 && count >= limit;
+  const isFreePlan = limit === 0;
 
   return (
     <div className="space-y-2">

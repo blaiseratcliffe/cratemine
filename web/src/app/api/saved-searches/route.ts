@@ -28,12 +28,18 @@ export async function GET() {
     session.user.role || "user"
   );
 
+  // limit: -1 = unlimited, 0 = none (free), >0 = capped
+  const limit =
+    session.user.role === "admin"
+      ? -1
+      : planConfig.maxSavedSearches;
+
   return NextResponse.json({
     searches: searches.map((s) => ({
       ...s,
       config: JSON.parse(s.config),
     })),
-    limit: planConfig.maxSavedSearches,
+    limit,
     count: searches.length,
   });
 }
