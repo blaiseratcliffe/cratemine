@@ -9,9 +9,12 @@
  * 5. Check neighborhood → parent city map (South London → London)
  * 6. Skip segments that are country names
  * 7. Reject segments that look like slogans/garbage (blocklist words)
- * 8. Accept the first segment that passes all checks
- * 9. Fall back to "Unknown"
+ * 8. Validate against GeoNames top 10K cities database
+ * 9. Accept the first segment that passes all checks
+ * 10. Fall back to "Unknown"
  */
+
+import { GEONAMES_CITIES } from "./city-data";
 
 /**
  * Strip diacritics/accents: São → Sao, Zürich → Zurich, Malmö → Malmo
@@ -307,25 +310,22 @@ function classifySegment(segment: string): string | null {
     if (lower.includes(pattern) || stripped.includes(pattern)) return null;
   }
 
-  // Reject if it's too long (>40 chars) — probably a slogan
-  if (cleaned.length > 40) return null;
+  // Validate against GeoNames top 10K cities (exact match on accent-stripped lowercase)
+  if (GEONAMES_CITIES.has(stripped)) {
+    return titleCase(cleaned);
+  }
 
-  // Reject if it has too many words (>4) — probably a phrase, not a city
+  // Also try prefix matching: "Bristol UK" → check "bristol"
   const words = cleaned.split(/\s+/);
-  if (words.length > 4) return null;
-
-  // Reject if all lowercase and single word under 3 chars (likely an abbreviation we don't know)
-  if (words.length === 1 && cleaned.length <= 2 && cleaned === cleaned.toLowerCase()) {
-    return null;
+  for (let len = words.length - 1; len >= 1; len--) {
+    const prefix = stripAccents(words.slice(0, len).join(" ").toLowerCase());
+    if (GEONAMES_CITIES.has(prefix)) {
+      return titleCase(words.slice(0, len).join(" "));
+    }
   }
 
-  // Reject strings that are all numbers or contain @ / # / emoji
-  if (/^\d+$/.test(cleaned) || /[@#]/.test(cleaned) || /[\u{1F000}-\u{1FFFF}]/u.test(cleaned)) {
-    return null;
-  }
-
-  // Passes all checks — treat as a city name, title-case it
-  return titleCase(cleaned);
+  // Not in the database — reject as Unknown
+  return null;
 }
 
 /** Clean a single segment: strip trailing country codes, trim whitespace */
