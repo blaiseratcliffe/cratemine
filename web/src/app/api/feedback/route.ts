@@ -3,10 +3,17 @@ import { Resend } from "resend";
 import { auth } from "@/lib/auth";
 import { verifyCsrf } from "@/lib/csrf";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const TO_EMAIL = "b.ratcliffe@gmail.com";
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "CrateMine <noreply@resend.dev>";
+
+function getResend() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("RESEND_API_KEY is not set");
+  return new Resend(key);
+}
+
+function getFromEmail() {
+  return process.env.RESEND_FROM_EMAIL || "CrateMine <onboarding@resend.dev>";
+}
 
 export async function POST(request: NextRequest) {
   const csrfError = verifyCsrf(request);
@@ -33,8 +40,8 @@ export async function POST(request: NextRequest) {
       : `[CrateMine] Feedback from ${session.user.name || session.user.email}`;
 
   try {
-    await resend.emails.send({
-      from: FROM_EMAIL,
+    await getResend().emails.send({
+      from: getFromEmail(),
       to: TO_EMAIL,
       subject,
       text: [
