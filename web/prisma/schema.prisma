@@ -15,10 +15,12 @@ model User {
   emailVerified DateTime?
   image         String?
   role          String    @default("user") // "user" or "admin"
+  plan          String    @default("free") // "free", "pro", "unlimited"
   accounts      Account[]
   sessions      Session[]
 
   soundcloudAccount SoundCloudAccount?
+  subscription      Subscription?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -72,6 +74,22 @@ model SoundCloudAccount {
   expiresIn    Int
   createdAt    Int
   updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Stripe subscription tracking
+model Subscription {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  stripeCustomerId     String   @unique
+  stripeSubscriptionId String?  @unique
+  stripePriceId        String?
+  status               String   @default("inactive") // active, cancelled, past_due, inactive
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

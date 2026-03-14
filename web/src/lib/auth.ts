@@ -38,9 +38,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Fetch role from DB (Prisma adapter doesn't include custom fields by default)
       const dbUser = await prisma.user.findUnique({
         where: { id: user.id },
-        select: { role: true },
+        select: { role: true, plan: true },
       });
       session.user.role = dbUser?.role ?? "user";
+      (session.user as { plan?: string }).plan = dbUser?.plan ?? "free";
       return session;
     },
   },

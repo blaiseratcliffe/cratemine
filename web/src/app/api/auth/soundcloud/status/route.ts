@@ -21,5 +21,6 @@ export async function GET() {
     linked: !!sc,
     soundcloud: sc,
     role: session.user.role || "user",
+    plan: (session.user as { plan?: string }).plan || "free",
   });
 }

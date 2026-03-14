@@ -27,7 +27,18 @@ import type {
   WizardStep,
 } from "@/types";
 
-export function WizardShell({ isAdmin = false }: { isAdmin?: boolean }) {
+import { getEffectivePlan } from "@/lib/plans";
+
+export function WizardShell({
+  isAdmin = false,
+  plan = "free",
+  role = "user",
+}: {
+  isAdmin?: boolean;
+  plan?: string;
+  role?: string;
+}) {
+  const planConfig = getEffectivePlan(plan, role);
   const [state, dispatch] = useWizardState();
 
   // --- Search actions ---

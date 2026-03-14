@@ -165,6 +165,16 @@ export function UserMenu({ user, isAdmin, onLogout }: UserMenuProps) {
               >
                 Manage account
               </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  router.push("/dashboard/pricing");
+                }}
+                className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+              >
+                Pricing & plans
+              </button>
               {isAdmin && (
                 <button
                   role="menuitem"

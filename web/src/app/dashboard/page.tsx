@@ -15,6 +15,7 @@ interface SCStatus {
     scAvatarUrl: string | null;
   } | null;
   role: string;
+  plan: string;
 }
 
 export default function DashboardPage() {
@@ -75,7 +76,7 @@ export default function DashboardPage() {
 
       {/* Main */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <WizardShell isAdmin={scStatus.role === "admin"} />
+        <WizardShell isAdmin={scStatus.role === "admin"} plan={scStatus.plan} role={scStatus.role} />
       </main>
     </div>
   );
