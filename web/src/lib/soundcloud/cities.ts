@@ -1,76 +1,102 @@
 /**
- * Known major cities for matching SoundCloud user city strings.
- * This is a broad list — add more as needed.
+ * Hybrid city normalizer for SoundCloud user profiles.
+ *
+ * Strategy:
+ * 1. Split messy strings by / and , into segments
+ * 2. Clean each segment (strip country codes, parentheticals)
+ * 3. Check aliases map for known corrections (NYC → New York)
+ * 4. Skip segments that are country names
+ * 5. Reject segments that look like slogans/garbage (blocklist words)
+ * 6. Accept the first segment that passes all checks
+ * 7. Fall back to "Unknown"
  */
-const KNOWN_CITIES = new Set([
-  "london", "bristol", "manchester", "birmingham", "leeds", "liverpool",
-  "glasgow", "edinburgh", "cardiff", "brighton", "nottingham", "sheffield",
-  "newcastle", "belfast", "cambridge", "oxford", "bath", "exeter", "york",
-  "southampton", "portsmouth", "coventry", "leicester", "bradford", "hull",
-  "stoke", "reading", "norwich", "derby", "plymouth", "aberdeen", "dundee",
-  "swansea", "bournemouth", "colchester", "croydon", "luton", "swindon",
-  "new york", "los angeles", "chicago", "houston", "phoenix", "philadelphia",
-  "san antonio", "san diego", "dallas", "san jose", "austin", "jacksonville",
-  "fort worth", "columbus", "charlotte", "san francisco", "indianapolis",
-  "seattle", "denver", "washington", "nashville", "oklahoma city", "portland",
-  "las vegas", "memphis", "louisville", "baltimore", "milwaukee", "albuquerque",
-  "tucson", "fresno", "sacramento", "mesa", "kansas city", "atlanta", "miami",
-  "oakland", "minneapolis", "tulsa", "cleveland", "detroit", "boston",
-  "new orleans", "pittsburgh", "st louis", "cincinnati", "orlando",
-  "tampa", "raleigh", "richmond", "salt lake city",
-  "toronto", "vancouver", "montreal", "calgary", "edmonton", "ottawa",
-  "winnipeg", "quebec city", "hamilton", "halifax", "victoria",
-  "berlin", "hamburg", "munich", "cologne", "frankfurt", "dusseldorf",
-  "leipzig", "dortmund", "essen", "bremen", "dresden", "hannover", "stuttgart",
-  "paris", "marseille", "lyon", "toulouse", "nice", "nantes", "bordeaux",
-  "lille", "strasbourg", "rennes",
-  "amsterdam", "rotterdam", "the hague", "utrecht", "eindhoven",
-  "brussels", "antwerp", "ghent",
-  "vienna", "zurich", "geneva", "basel", "bern",
-  "prague", "warsaw", "budapest", "bucharest", "sofia", "belgrade",
-  "athens", "lisbon", "porto", "madrid", "barcelona", "valencia", "seville",
-  "rome", "milan", "naples", "turin", "florence", "venice", "bologna",
-  "dublin", "cork", "galway",
-  "stockholm", "gothenburg", "copenhagen", "oslo", "helsinki",
-  "moscow", "st petersburg", "kyiv",
-  "istanbul", "cairo", "johannesburg", "cape town", "lagos", "nairobi",
-  "tokyo", "osaka", "seoul", "beijing", "shanghai", "hong kong", "singapore",
-  "taipei", "bangkok", "hanoi", "jakarta", "kuala lumpur", "manila",
-  "mumbai", "delhi", "bangalore", "chennai", "kolkata", "hyderabad",
-  "sydney", "melbourne", "brisbane", "perth", "adelaide", "auckland",
-  "wellington", "christchurch",
-  "mexico city", "guadalajara", "monterrey", "sao paulo", "rio de janeiro",
-  "bogota", "lima", "santiago", "buenos aires",
-  "dubai", "abu dhabi", "riyadh", "tel aviv", "beirut",
+
+/** Common aliases and abbreviations → canonical city name */
+const CITY_ALIASES = new Map<string, string>([
+  ["nyc", "New York"],
+  ["ny", "New York"],
+  ["la", "Los Angeles"],
+  ["sf", "San Francisco"],
+  ["dc", "Washington"],
+  ["philly", "Philadelphia"],
+  ["nola", "New Orleans"],
+  ["bk", "Brooklyn"],
+  ["bklyn", "Brooklyn"],
+  ["ldn", "London"],
+  ["mcr", "Manchester"],
+  ["bris", "Bristol"],
+  ["brizzle", "Bristol"],
+  ["ams", "Amsterdam"],
+  ["cph", "Copenhagen"],
+  ["sthlm", "Stockholm"],
+  ["hk", "Hong Kong"],
+  ["melb", "Melbourne"],
+  ["syd", "Sydney"],
+  ["bne", "Brisbane"],
+  ["akl", "Auckland"],
+  ["welly", "Wellington"],
+  ["muc", "Munich"],
+  ["ffm", "Frankfurt"],
+  ["bcn", "Barcelona"],
+  ["cdmx", "Mexico City"],
+  ["sp", "São Paulo"],
+  ["rj", "Rio De Janeiro"],
+  ["ist", "Istanbul"],
+]);
+
+/** Country names/codes — skip these as they're not cities */
+const COUNTRIES = new Set([
+  "uk", "united kingdom", "us", "usa", "united states", "america",
+  "canada", "australia", "new zealand", "nz", "germany", "deutschland",
+  "france", "netherlands", "holland", "belgium", "spain", "espana",
+  "italy", "italia", "portugal", "ireland", "sweden", "norge",
+  "norway", "denmark", "finland", "austria", "switzerland",
+  "poland", "czech republic", "czechia", "hungary", "romania",
+  "japan", "south korea", "korea", "china", "india", "brazil",
+  "brasil", "mexico", "argentina", "south africa", "egypt",
+  "nigeria", "kenya", "thailand", "indonesia", "malaysia",
+  "singapore", "philippines", "vietnam", "russia", "ukraine",
+  "turkey", "greece", "croatia", "serbia", "bulgaria",
+  "scotland", "wales", "england", "worldwide", "global", "earth",
+  "europe", "asia", "africa", "international",
 ]);
 
 /**
- * Known country names and codes for filtering out country-only entries.
+ * Words/phrases that indicate the string is NOT a city.
+ * Matched against lowercase segments.
  */
-const KNOWN_COUNTRIES = new Set([
-  "uk", "united kingdom", "us", "usa", "united states", "canada",
-  "australia", "new zealand", "germany", "france", "netherlands",
-  "belgium", "spain", "italy", "portugal", "ireland", "sweden",
-  "norway", "denmark", "finland", "austria", "switzerland",
-  "poland", "czech republic", "hungary", "romania", "japan",
-  "south korea", "china", "india", "brazil", "mexico", "argentina",
-  "south africa", "egypt", "nigeria", "kenya", "thailand",
-  "indonesia", "malaysia", "singapore", "philippines", "vietnam",
-  "russia", "ukraine", "turkey", "greece", "croatia", "serbia",
-  "bulgaria", "scotland", "wales", "england",
-]);
+const GARBAGE_PATTERNS = [
+  // Slogans / vibes
+  "the jungle", "the rave", "the bass", "the underground", "the void",
+  "the matrix", "the lab", "the studio", "the streets",
+  "my home", "my house", "my room", "my mind", "my world",
+  "your mom", "your mum",
+  "nowhere", "everywhere", "somewhere", "anywhere",
+  "outer space", "the moon", "the internet", "the cloud",
+  "planet earth", "mother earth",
+  // Music terms
+  "born on road", "run tingz", "deep in the",
+  "bass music", "drum and bass", "dubstep", "jungle music",
+  "rave culture", "sound system", "dj booth",
+  // Generic nonsense
+  "home is", "is the", "is my", "in the",
+  "follow me", "book me", "hire me", "contact",
+  "independent", "unsigned", "producer", "artist",
+  "beats", "records", "recordings", "music",
+];
 
 /**
  * Normalize a SoundCloud user's city string to a clean city name.
  *
- * Handles:
+ * Examples:
  * - "Run Tingz / Born On Road / Bristol" → "Bristol"
  * - "Cambridge/Uk" → "Cambridge"
- * - "Liverpool / London" → "Liverpool" (take first)
+ * - "Liverpool / London" → "Liverpool" (first valid)
  * - "The Jungle" → "Unknown"
  * - "My Home Is The Rave" → "Unknown"
  * - "Berlin, Germany" → "Berlin"
  * - "Edmonton AB" → "Edmonton"
+ * - "NYC" → "New York"
  * - null → "Unknown"
  */
 export function normalizeCity(raw: string | null): string {
@@ -82,61 +108,54 @@ export function normalizeCity(raw: string | null): string {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // Try each segment: look for a known city
   for (const segment of segments) {
-    const cleaned = cleanSegment(segment);
-    if (!cleaned) continue;
-
-    const lower = cleaned.toLowerCase();
-
-    // Skip if it's just a country name
-    if (KNOWN_COUNTRIES.has(lower)) continue;
-
-    // Direct match against known cities
-    if (KNOWN_CITIES.has(lower)) {
-      return titleCase(cleaned);
-    }
-  }
-
-  // Second pass: try prefix matching (e.g. "Bristol UK" → "Bristol")
-  for (const segment of segments) {
-    const cleaned = cleanSegment(segment);
-    if (!cleaned) continue;
-
-    const words = cleaned.split(/\s+/);
-    // Try progressively shorter prefixes
-    for (let len = words.length; len >= 1; len--) {
-      const candidate = words.slice(0, len).join(" ").toLowerCase();
-      if (KNOWN_CITIES.has(candidate)) {
-        return titleCase(candidate);
-      }
-    }
-  }
-
-  // Third pass: fuzzy check - does any segment look like a real place name?
-  // (short, capitalized, no special chars — heuristic)
-  for (const segment of segments) {
-    const cleaned = cleanSegment(segment);
-    if (!cleaned) continue;
-    const lower = cleaned.toLowerCase();
-    if (KNOWN_COUNTRIES.has(lower)) continue;
-
-    // If it's 1-3 words, starts with uppercase, and doesn't look like a slogan
-    const words = cleaned.split(/\s+/);
-    if (
-      words.length <= 3 &&
-      words.length >= 1 &&
-      /^[A-Z]/.test(cleaned) &&
-      !lower.includes("the ") &&
-      !lower.includes("my ") &&
-      !lower.includes("is ") &&
-      cleaned.length <= 30
-    ) {
-      return titleCase(cleaned);
-    }
+    const result = classifySegment(segment);
+    if (result) return result;
   }
 
   return "Unknown";
+}
+
+/**
+ * Classify a single segment: returns a clean city name or null if garbage.
+ */
+function classifySegment(segment: string): string | null {
+  const cleaned = cleanSegment(segment);
+  if (!cleaned || cleaned.length < 2) return null;
+
+  const lower = cleaned.toLowerCase();
+
+  // Check aliases first (NYC → New York)
+  const alias = CITY_ALIASES.get(lower);
+  if (alias) return alias;
+
+  // Skip country names
+  if (COUNTRIES.has(lower)) return null;
+
+  // Reject garbage patterns
+  for (const pattern of GARBAGE_PATTERNS) {
+    if (lower.includes(pattern)) return null;
+  }
+
+  // Reject if it's too long (>40 chars) — probably a slogan
+  if (cleaned.length > 40) return null;
+
+  // Reject if it has too many words (>4) — probably a phrase, not a city
+  const words = cleaned.split(/\s+/);
+  if (words.length > 4) return null;
+
+  // Reject if all lowercase and single word under 3 chars (likely an abbreviation we don't know)
+  if (words.length === 1 && cleaned.length <= 2 && cleaned === cleaned.toLowerCase()) {
+    return null;
+  }
+
+  // Reject strings that are all numbers or contain @ / # / emoji
+  if (/^\d+$/.test(cleaned) || /[@#]/.test(cleaned) || /[\u{1F000}-\u{1FFFF}]/u.test(cleaned)) {
+    return null;
+  }
+
+  // Passes all checks — treat as a city name
+  return titleCase(cleaned);
 }
 
 /** Clean a single segment: strip trailing country codes, trim whitespace */
@@ -145,7 +164,10 @@ function cleanSegment(s: string): string {
   if (!cleaned) return "";
 
   // Strip trailing 2-3 letter country/state codes: "Edmonton AB" → "Edmonton"
-  cleaned = cleaned.replace(/\s+[A-Za-z]{2,3}$/, "").trim();
+  // But don't strip if the whole string IS the 2-3 letter code (handled by aliases)
+  if (cleaned.split(/\s+/).length > 1) {
+    cleaned = cleaned.replace(/\s+[A-Za-z]{2,3}$/, "").trim();
+  }
 
   // Strip parenthetical suffixes: "Bristol (UK)" → "Bristol"
   cleaned = cleaned.replace(/\s*\(.*?\)\s*$/, "").trim();
