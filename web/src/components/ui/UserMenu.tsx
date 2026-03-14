@@ -46,10 +46,18 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
     setSubmitted(false);
   }
 
-  function handleSubmitModal() {
-    // For now, log to console. In a real app this would POST to an API.
-    console.log(`[${modal}]`, modalText);
-    setSubmitted(true);
+  async function handleSubmitModal() {
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: modal, message: modalText }),
+      });
+      if (!res.ok) throw new Error();
+      setSubmitted(true);
+    } catch {
+      alert("Failed to submit. Please try again.");
+    }
   }
 
   return (
