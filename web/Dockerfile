@@ -3,19 +3,11 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Railway injects env vars as build args — expose them as env vars
-ARG DATABASE_URL
-ARG AUTH_SECRET
-ARG SESSION_SECRET
-ENV DATABASE_URL=$DATABASE_URL
-ENV AUTH_SECRET=$AUTH_SECRET
-ENV SESSION_SECRET=$SESSION_SECRET
-
 COPY package.json package-lock.json* ./
 RUN npm ci --ignore-scripts
 
 COPY . .
-RUN npx prisma generate && npx prisma db push --skip-generate && npm run build
+RUN npx prisma generate && npm run build
 
 # --- Production stage ---
 FROM node:20-alpine AS runner
@@ -38,6 +30,12 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
+# Copy prisma schema + CLI for db push at startup
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+# Push schema to DB then start the app
+CMD npx prisma db push --skip-generate && node server.js
