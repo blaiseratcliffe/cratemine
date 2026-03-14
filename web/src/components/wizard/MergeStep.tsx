@@ -13,9 +13,11 @@ interface Props {
   onLoadPlaylists: () => void;
   onToggle: (id: number) => void;
   onSelectAll: (selected: boolean) => void;
+  onAddPlaylist: (playlist: MyPlaylist) => void;
   onFetchTracks: () => void;
   onCancel: () => void;
   onNext: () => void;
+  canAddExternal?: boolean;
 }
 
 function formatDate(iso: string): string {
@@ -35,12 +37,17 @@ export function MergeStep({
   onLoadPlaylists,
   onToggle,
   onSelectAll,
+  onAddPlaylist,
   onFetchTracks,
   onCancel,
   onNext,
+  canAddExternal = false,
 }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [filter, setFilter] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
+  const [resolving, setResolving] = useState(false);
+  const [resolveError, setResolveError] = useState("");
 
   // Load playlists on mount
   useEffect(() => {
@@ -68,6 +75,80 @@ export function MergeStep({
   const isFetching = progress.phase === "fetching" && progress.isRunning;
   const isDone = progress.phase === "done" && trackCount > 0;
 
+  async function handleAddExternal() {
+    const trimmed = externalUrl.trim();
+    if (!trimmed) return;
+
+    // Validate it looks like a SoundCloud URL
+    try {
+      const parsed = new URL(trimmed);
+      if (
+        !parsed.hostname.includes("soundcloud.com")
+      ) {
+        setResolveError("Please enter a SoundCloud playlist URL");
+        return;
+      }
+    } catch {
+      setResolveError("Please enter a valid URL");
+      return;
+    }
+
+    setResolving(true);
+    setResolveError("");
+
+    try {
+      const res = await fetch("/api/sc/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+
+      if (!res.ok) {
+        setResolveError("Could not find that playlist");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.kind !== "playlist") {
+        setResolveError(
+          data.kind === "track"
+            ? "That's a track, not a playlist. Use the Download Track tab for single tracks."
+            : data.kind === "user"
+              ? "That's a user profile, not a playlist."
+              : "URL does not point to a playlist."
+        );
+        return;
+      }
+
+      const pl = data.resolved;
+
+      // Check if already in the list
+      if (playlists.some((p) => p.id === pl.id)) {
+        setResolveError("This playlist is already in your list");
+        return;
+      }
+
+      onAddPlaylist({
+        id: pl.id,
+        title: pl.title || "Untitled",
+        trackCount: pl.track_count || 0,
+        likesCount: pl.likes_count || 0,
+        sharing: pl.sharing || "public",
+        createdAt: pl.created_at || new Date().toISOString(),
+        permalinkUrl: pl.permalink_url || trimmed,
+        selected: true,
+        isExternal: true,
+      });
+
+      setExternalUrl("");
+    } catch {
+      setResolveError("Failed to resolve playlist");
+    } finally {
+      setResolving(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -86,6 +167,38 @@ export function MergeStep({
         Select playlists from your SoundCloud library to merge together. Tracks
         will be deduplicated, scored, and sorted.
       </p>
+
+      {/* Add external playlist */}
+      {canAddExternal && (
+        <div className="space-y-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="url"
+              value={externalUrl}
+              onChange={(e) => {
+                setExternalUrl(e.target.value);
+                if (resolveError) setResolveError("");
+              }}
+              placeholder="Paste a SoundCloud playlist URL to add..."
+              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+              disabled={resolving}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !resolving) handleAddExternal();
+              }}
+            />
+            <button
+              onClick={handleAddExternal}
+              disabled={!externalUrl.trim() || resolving}
+              className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:text-zinc-600 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+            >
+              {resolving ? "Adding..." : "Add playlist"}
+            </button>
+          </div>
+          {resolveError && (
+            <p className="text-xs text-red-400">{resolveError}</p>
+          )}
+        </div>
+      )}
 
       {/* Loading state */}
       {isLoading && (
@@ -169,19 +282,26 @@ export function MergeStep({
                       />
                     </td>
                     <td className="p-2 text-white max-w-xs truncate">
-                      {pl.permalinkUrl ? (
-                        <a
-                          href={pl.permalinkUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:text-orange-400 transition-colors"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {pl.title}
-                        </a>
-                      ) : (
-                        pl.title
-                      )}
+                      <span className="flex items-center gap-2">
+                        {pl.permalinkUrl ? (
+                          <a
+                            href={pl.permalinkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-orange-400 transition-colors truncate"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {pl.title}
+                          </a>
+                        ) : (
+                          <span className="truncate">{pl.title}</span>
+                        )}
+                        {pl.isExternal && (
+                          <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400">
+                            external
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="p-2 text-right text-zinc-300 font-mono">
                       {pl.trackCount.toLocaleString()}
@@ -199,7 +319,10 @@ export function MergeStep({
                 ))}
                 {filteredPlaylists.length === 0 && filter && (
                   <tr>
-                    <td colSpan={6} className="p-6 text-center text-zinc-500 text-sm">
+                    <td
+                      colSpan={6}
+                      className="p-6 text-center text-zinc-500 text-sm"
+                    >
                       No playlists match &quot;{filter}&quot;
                     </td>
                   </tr>

@@ -64,6 +64,7 @@ type Action =
   | { type: "ADD_SCENE_EDGES"; edges: SceneEdge[] }
   | { type: "SET_SCENE_PROGRESS"; progress: Partial<SceneProgress> }
   | { type: "SET_MY_PLAYLISTS"; playlists: MyPlaylist[] }
+  | { type: "ADD_MY_PLAYLIST"; playlist: MyPlaylist }
   | { type: "TOGGLE_MY_PLAYLIST"; id: number }
   | { type: "SELECT_ALL_MY_PLAYLISTS"; selected: boolean }
   | { type: "SET_MERGE_PROGRESS"; progress: Partial<MergeProgress> }
@@ -157,6 +158,8 @@ function reducer(state: WizardState, action: Action): WizardState {
       };
     case "SET_MY_PLAYLISTS":
       return { ...state, myPlaylists: action.playlists };
+    case "ADD_MY_PLAYLIST":
+      return { ...state, myPlaylists: [...state.myPlaylists, action.playlist] };
     case "TOGGLE_MY_PLAYLIST":
       return {
         ...state,

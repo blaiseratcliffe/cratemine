@@ -329,9 +329,13 @@ export function WizardShell({
           onSelectAll={(selected) =>
             dispatch({ type: "SELECT_ALL_MY_PLAYLISTS", selected })
           }
+          onAddPlaylist={(playlist) =>
+            dispatch({ type: "ADD_MY_PLAYLIST", playlist })
+          }
           onFetchTracks={handleMergeFetchTracks}
           onCancel={abortMerge}
           onNext={() => dispatch({ type: "SET_STEP", step: "preview" })}
+          canAddExternal={plan !== "free" || role === "admin"}
         />
       )}
 

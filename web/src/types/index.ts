@@ -72,6 +72,7 @@ export interface MyPlaylist {
   createdAt: string;
   permalinkUrl: string;
   selected: boolean;
+  isExternal?: boolean;
 }
 
 export interface MergeProgress {
