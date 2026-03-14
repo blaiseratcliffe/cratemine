@@ -122,6 +122,7 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   const [groupByCity, setGroupByCity] = useState(false);
+  const [hoveredCity, setHoveredCity] = useState<string | null>(null);
 
   // Track container width
   useEffect(() => {
@@ -248,12 +249,20 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
       const fbc = (node.followedByCount as number) ?? 0;
       const username = (node.username as string) ?? "";
       const city = normalizeCity(node.city as string);
-      const r = isSeed ? 5 : Math.max(2, Math.min(fbc * 1.5, 8));
+      let r = isSeed ? 5 : Math.max(2, Math.min(fbc * 1.5, 8));
+
+      const isHighlighted = hoveredCity && city === hoveredCity;
+      const isDimmed = hoveredCity && city !== hoveredCity;
+
+      // Enlarge highlighted nodes
+      if (isHighlighted) r *= 1.4;
 
       ctx.beginPath();
       ctx.arc(x, y, r, 0, 2 * Math.PI, false);
 
-      if (groupByCity) {
+      if (isDimmed) {
+        ctx.fillStyle = "#27272a"; // dark grey for dimmed nodes
+      } else if (groupByCity) {
         const cluster = cityClusterInfo.get(city);
         ctx.fillStyle = cluster?.color ?? "#a1a1aa";
       } else {
@@ -261,16 +270,21 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
       }
       ctx.fill();
 
-      if (globalScale > 1.5 || (isSeed && globalScale > 0.8)) {
+      // Show labels for highlighted nodes, or normal zoom-based labels
+      const showLabel = isHighlighted
+        || globalScale > 1.5
+        || (isSeed && globalScale > 0.8);
+
+      if (showLabel && !isDimmed) {
         const fontSize = Math.max(10 / globalScale, 2);
         ctx.font = `${fontSize}px sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
-        ctx.fillStyle = isSeed ? "#fb923c" : "#71717a";
+        ctx.fillStyle = isHighlighted ? "#ffffff" : isSeed ? "#fb923c" : "#71717a";
         ctx.fillText(username, x, y + r + 1);
       }
     },
-    [groupByCity, cityClusterInfo]
+    [groupByCity, cityClusterInfo, hoveredCity]
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -279,7 +293,19 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
     if (url) window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
-  const linkColorFn = useCallback(() => "rgba(255,255,255,0.06)", []);
+  const linkColorFn = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (link: any) => {
+      if (!hoveredCity) return "rgba(255,255,255,0.06)";
+      const sourceCity = normalizeCity(link.source?.city as string);
+      const targetCity = normalizeCity(link.target?.city as string);
+      if (sourceCity === hoveredCity || targetCity === hoveredCity) {
+        return "rgba(255,255,255,0.15)";
+      }
+      return "rgba(255,255,255,0.02)";
+    },
+    [hoveredCity]
+  );
   const nodeModeFn = useCallback(() => "replace" as const, []);
 
   if (nodes.length === 0) return null;
@@ -328,9 +354,17 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
         />
       )}
       {showForceGraph && groupByCity && (
-        <div className="absolute bottom-3 right-3 z-10 bg-zinc-800/90 border border-zinc-700 rounded-md px-3 py-2 max-h-48 overflow-y-auto">
+        <div
+          className="absolute bottom-3 right-3 z-10 bg-zinc-800/90 border border-zinc-700 rounded-md px-3 py-2 max-h-48 overflow-y-auto"
+          onMouseLeave={() => setHoveredCity(null)}
+        >
           {[...cityClusterInfo.entries()].map(([city, info]) => (
-            <div key={city} className="flex items-center gap-2 text-xs py-0.5">
+            <div
+              key={city}
+              className="flex items-center gap-2 text-xs py-0.5 cursor-pointer transition-opacity"
+              style={{ opacity: hoveredCity && hoveredCity !== city ? 0.4 : 1 }}
+              onMouseEnter={() => setHoveredCity(city)}
+            >
               <span
                 className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
                 style={{ backgroundColor: info.color }}
