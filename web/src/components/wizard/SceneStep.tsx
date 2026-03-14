@@ -44,7 +44,8 @@ export function SceneStep({
   // Ctrl+Enter keyboard shortcut to discover
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !progress.isRunning && config.city.trim()) {
+      const canDiscover = config.city.trim() || (config.seedsOnly && config.seedArtists.trim());
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !progress.isRunning && canDiscover) {
         e.preventDefault();
         onDiscover();
       }
@@ -137,6 +138,20 @@ export function SceneStep({
         <p className="text-xs text-zinc-500 mt-1">
           SoundCloud usernames or URLs — always included as seeds regardless of city filter
         </p>
+        {config.seedArtists.trim() && (
+          <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer mt-2">
+            <input
+              type="checkbox"
+              checked={config.seedsOnly}
+              onChange={(e) =>
+                onConfigChange({ ...config, seedsOnly: e.target.checked })
+              }
+              disabled={progress.isRunning}
+              className="accent-orange-500"
+            />
+            Use only these seed artists (skip city search)
+          </label>
+        )}
       </div>
 
       {/* Advanced settings */}
@@ -232,7 +247,7 @@ export function SceneStep({
         {!progress.isRunning ? (
           <button
             onClick={onDiscover}
-            disabled={!config.city.trim()}
+            disabled={!config.city.trim() && !(config.seedsOnly && config.seedArtists.trim())}
             className="px-6 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-zinc-700 disabled:text-zinc-500 text-white font-medium rounded-lg transition-colors"
           >
             Discover Scene

@@ -23,6 +23,7 @@ const DEFAULT_SCENE_CONFIG: SceneConfig = {
   genreKeywords: "",
   filterTracksByGenre: true,
   seedArtists: "",
+  seedsOnly: false,
   maxSeedUsers: 50,
   minFollowedByCount: 2,
   maxSceneMembers: 200,

@@ -4,32 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { forceX, forceY } from "d3-force";
 import type { SceneUser, SceneEdge, SceneProgress } from "@/types";
+import { normalizeCity } from "@/lib/soundcloud/cities";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 });
 
-const GRAPH_HEIGHT = 640;
-
-/**
- * Normalize a city string for grouping.
- * "Toronto" and "toronto" → "Toronto"
- * "Los Angeles, CA" and "Los Angeles" → "Los Angeles"
- * "Berlin, Germany" and "Berlin" → "Berlin"
- */
-function normalizeCity(raw: string | null): string {
-  if (!raw) return "Unknown";
-  // Take only the part before the first comma (strip state/country/province)
-  let city = raw.split(",")[0].trim();
-  if (!city) return "Unknown";
-  // Strip trailing 2-3 letter state/province codes: "Edmonton AB" → "Edmonton"
-  city = city.replace(/\s+[A-Za-z]{2,3}$/, "").trim();
-  if (!city) return "Unknown";
-  // Title-case: lowercase everything then capitalize first letter of each word
-  return city
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
+const GRAPH_HEIGHT = 800;
 
 // Colors for city clusters
 const CLUSTER_COLORS = [
@@ -193,8 +174,8 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
     const fg = fgRef.current;
     if (!fg || forcesConfigured.current) return;
     forcesConfigured.current = true;
-    fg.d3Force("charge")?.strength(-30);
-    fg.d3Force("link")?.distance(80);
+    fg.d3Force("charge")?.strength(-80);
+    fg.d3Force("link")?.distance(140);
   });
 
   // Apply or remove city clustering forces
@@ -215,13 +196,13 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
         return cityClusterInfo.get(city)?.y ?? 0;
       }).strength(0.4));
 
-      fg.d3Force("link")?.distance(120);
-      fg.d3Force("charge")?.strength(-15);
+      fg.d3Force("link")?.distance(160);
+      fg.d3Force("charge")?.strength(-40);
     } else {
       fg.d3Force("cityX", null);
       fg.d3Force("cityY", null);
-      fg.d3Force("link")?.distance(80);
-      fg.d3Force("charge")?.strength(-30);
+      fg.d3Force("link")?.distance(140);
+      fg.d3Force("charge")?.strength(-80);
     }
 
     fg.d3ReheatSimulation();

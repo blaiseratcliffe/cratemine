@@ -89,7 +89,8 @@ export function useSCSceneMap(actions: SceneMapActions) {
       }
 
       // --- 1b. Search with multiple queries, paginated (#2) ---
-      const queries = buildSeedSearchQueries(config.city, config.genreKeywords);
+      // Skip city search if user wants seeds only
+      const queries = config.seedsOnly ? [] : buildSeedSearchQueries(config.city, config.genreKeywords);
       for (const query of queries) {
         if (abortRef.current) break;
 
@@ -135,7 +136,9 @@ export function useSCSceneMap(actions: SceneMapActions) {
         `[SceneMap] ${allUsers.length} users from ${queries.length} queries + ${manualSeeds.length} manual, ` +
         `${allUsers.filter((u) => u.city).length} have city field set`
       );
-      const seeds = filterSeedUsers(allUsers, config.city, config.maxSeedUsers);
+      const seeds = config.seedsOnly
+        ? [...manualSeeds]  // Seeds-only mode: skip city filtering
+        : filterSeedUsers(allUsers, config.city, config.maxSeedUsers);
 
       // Ensure manual seeds are always included even if city filter would drop them
       const manualSeedIds = new Set(manualSeeds.map((s) => s.id));

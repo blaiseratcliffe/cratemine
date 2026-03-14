@@ -82,6 +82,7 @@ export interface SceneConfig {
   genreKeywords: string;
   filterTracksByGenre: boolean;
   seedArtists: string;
+  seedsOnly: boolean;
   maxSeedUsers: number;
   minFollowedByCount: number;
   maxSceneMembers: number;
