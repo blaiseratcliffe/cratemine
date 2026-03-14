@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Spinner } from "@/components/ui/Spinner";
+
+interface PriceIds {
+  pro: string | null;
+  unlimited: string | null;
+}
 
 interface PlanCard {
   plan: string;
   name: string;
   price: string;
-  priceId: string | null;
+  priceKey: "pro" | "unlimited" | null;
   features: string[];
   highlighted?: boolean;
 }
@@ -19,7 +24,7 @@ const PLANS: PlanCard[] = [
     plan: "free",
     name: "Free",
     price: "$0",
-    priceId: null,
+    priceKey: null,
     features: [
       "Playlist search & merge",
       "Scene discovery (10 seeds)",
@@ -32,7 +37,7 @@ const PLANS: PlanCard[] = [
     plan: "pro",
     name: "Pro",
     price: "$4/mo",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || "",
+    priceKey: "pro",
     features: [
       "Everything in Free",
       "Full scene discovery",
@@ -46,7 +51,7 @@ const PLANS: PlanCard[] = [
     plan: "unlimited",
     name: "Unlimited",
     price: "$6/mo",
-    priceId: process.env.NEXT_PUBLIC_STRIPE_UNLIMITED_PRICE_ID || "",
+    priceKey: "unlimited",
     features: [
       "Everything in Pro",
       "Unlimited playlists per day",
@@ -59,7 +64,15 @@ const PLANS: PlanCard[] = [
 export default function PricingPage() {
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState<string | null>(null);
+  const [priceIds, setPriceIds] = useState<PriceIds | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/stripe/prices")
+      .then((r) => r.json())
+      .then((data) => setPriceIds(data))
+      .catch(() => {});
+  }, []);
 
   if (status === "loading") {
     return (
@@ -139,6 +152,7 @@ export default function PricingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {PLANS.map((p) => {
             const isCurrent = p.plan === currentPlan;
+            const priceId = p.priceKey && priceIds ? priceIds[p.priceKey] : null;
 
             return (
               <div
@@ -190,9 +204,9 @@ export default function PricingPage() {
                     <div className="w-full py-2 text-center text-sm text-zinc-500 border border-zinc-700 rounded-lg">
                       Current plan
                     </div>
-                  ) : p.priceId ? (
+                  ) : priceId ? (
                     <button
-                      onClick={() => handleUpgrade(p.priceId!)}
+                      onClick={() => handleUpgrade(priceId)}
                       disabled={!!loading}
                       className={`w-full py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                         p.highlighted
@@ -200,8 +214,12 @@ export default function PricingPage() {
                           : "bg-zinc-800 hover:bg-zinc-700 text-white"
                       } disabled:opacity-50`}
                     >
-                      {loading === p.priceId ? "Loading..." : "Upgrade"}
+                      {loading === priceId ? "Loading..." : "Upgrade"}
                     </button>
+                  ) : p.priceKey ? (
+                    <div className="w-full py-2 text-center text-sm text-zinc-600">
+                      Loading...
+                    </div>
                   ) : (
                     <div className="w-full py-2 text-center text-sm text-zinc-600">
                       Free forever
