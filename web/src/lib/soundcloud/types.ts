@@ -52,6 +52,7 @@ export interface SCTrackRaw {
   reposts_count: number | null;
   comment_count: number | null;
   comments_count?: number | null;
+  duration?: number | null; // milliseconds
   created_at: string;
   access: string;
   permalink_url: string;

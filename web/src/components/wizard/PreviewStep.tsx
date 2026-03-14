@@ -15,17 +15,27 @@ interface Props {
   onBack: () => void;
   onNext: () => void;
   isAdmin?: boolean;
+  canRemoveTracks?: boolean;
 }
 
 type SortField =
   | "title"
   | "username"
+  | "duration"
   | "playbackCount"
   | "likesCount"
   | "repostsCount"
   | "score"
   | "createdAt";
 type SortDir = "asc" | "desc";
+
+function formatDuration(ms: number): string {
+  if (!ms || ms <= 0) return "—";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -48,6 +58,7 @@ export function PreviewStep({
   onBack,
   onNext,
   isAdmin = false,
+  canRemoveTracks = false,
 }: Props) {
   const [playingTrackId, setPlayingTrackId] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>("score");
@@ -142,6 +153,10 @@ export function PreviewStep({
     } finally {
       setDownloadingId(null);
     }
+  }
+
+  function handleRemoveTrack(trackId: number) {
+    onMergedTracksChange(mergedTracks.filter((t) => t.trackId !== trackId));
   }
 
   const widgetUrl = playingTrackId
@@ -266,12 +281,14 @@ export function PreviewStep({
               <th className="p-2 text-left text-zinc-400 w-10"></th>
               <SortHeader field="title" label="Title" />
               <SortHeader field="username" label="Artist" />
+              <SortHeader field="duration" label="Time" align="right" />
               <SortHeader field="createdAt" label="Date" />
               <SortHeader field="playbackCount" label="Plays" align="right" />
               <SortHeader field="likesCount" label="Likes" align="right" />
               <SortHeader field="repostsCount" label="Reposts" align="right" />
               <SortHeader field="score" label="Score" align="right" />
               {isAdmin && <th className="p-2 text-center text-zinc-400 w-10"></th>}
+              {canRemoveTracks && <th className="p-2 text-center text-zinc-400 w-10"></th>}
             </tr>
           </thead>
           <tbody>
@@ -339,6 +356,9 @@ export function PreviewStep({
                     t.username
                   )}
                 </td>
+                <td className="p-2 text-right text-zinc-500 font-mono text-xs whitespace-nowrap">
+                  {formatDuration(t.duration)}
+                </td>
                 <td className="p-2 text-zinc-500 whitespace-nowrap text-xs">
                   {formatDate(t.createdAt)}
                 </td>
@@ -398,6 +418,19 @@ export function PreviewStep({
                     )}
                   </button>
                 </td>}
+                {canRemoveTracks && (
+                  <td className="p-2 text-center">
+                    <button
+                      onClick={() => handleRemoveTrack(t.trackId)}
+                      className="text-zinc-600 hover:text-red-400 transition-colors cursor-pointer"
+                      title="Remove track"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

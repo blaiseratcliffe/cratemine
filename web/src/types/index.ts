@@ -28,6 +28,7 @@ export interface ScoredTrack {
   likesCount: number;
   repostsCount: number;
   commentCount: number;
+  duration: number; // milliseconds
   createdAt: string;
   access: string;
   score: number;

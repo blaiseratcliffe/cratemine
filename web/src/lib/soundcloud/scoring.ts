@@ -31,6 +31,7 @@ export function trackToScored(
     likesCount: likes,
     repostsCount: reposts,
     commentCount: comments,
+    duration: raw.duration ?? 0,
     createdAt: raw.created_at,
     access: raw.access ?? "playable",
     score,

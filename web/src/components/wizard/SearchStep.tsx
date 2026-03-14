@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchConfig, WizardState } from "@/types";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { SavedSearches } from "@/components/ui/SavedSearches";
 
 interface Props {
   config: SearchConfig;
@@ -73,6 +74,18 @@ export function SearchStep({
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-white">Search Playlists</h2>
+
+      <SavedSearches
+        type="playlist_search"
+        currentConfig={config as unknown as Record<string, unknown>}
+        onLoad={(cfg) => {
+          const loaded = cfg as unknown as SearchConfig;
+          onConfigChange(loaded);
+          setQueriesText(loaded.queries?.join("\n") || "");
+          setRequireTermsText(loaded.requireTerms?.join(", ") || "");
+          setExcludeTermsText(loaded.excludeTerms?.join(", ") || "");
+        }}
+      />
 
       <div>
         <label className="block text-sm text-zinc-400 mb-1">

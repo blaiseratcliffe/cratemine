@@ -315,6 +315,7 @@ export function WizardShell({
           onCancel={abortScene}
           onBack={() => handleModeChange("playlists")}
           onNext={() => dispatch({ type: "SET_STEP", step: "preview" })}
+          showGraph={plan === "unlimited" || role === "admin"}
         />
       )}
 
@@ -375,6 +376,7 @@ export function WizardShell({
           }
           onNext={() => dispatch({ type: "SET_STEP", step: "create" })}
           isAdmin={isAdmin}
+          canRemoveTracks={plan !== "free" || role === "admin"}
         />
       )}
 

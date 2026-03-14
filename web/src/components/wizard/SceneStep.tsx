@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { SceneConfig, SceneEdge, SceneProgress, SceneUser } from "@/types";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Tooltip } from "@/components/ui/Tooltip";
+import { SavedSearches } from "@/components/ui/SavedSearches";
 import { SceneGraph } from "./SceneGraph";
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
   onCancel: () => void;
   onBack: () => void;
   onNext: () => void;
+  showGraph?: boolean;
 }
 
 const PHASE_LABELS: Record<SceneProgress["phase"], string> = {
@@ -38,6 +40,7 @@ export function SceneStep({
   onCancel,
   onBack,
   onNext,
+  showGraph = false,
 }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -69,6 +72,12 @@ export function SceneStep({
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-white">Scene Discovery</h2>
+
+      <SavedSearches
+        type="scene_discovery"
+        currentConfig={config as unknown as Record<string, unknown>}
+        onLoad={(cfg) => onConfigChange(cfg as unknown as SceneConfig)}
+      />
       <p className="text-sm text-zinc-400">
         Find what&apos;s trending in a city&apos;s underground scene by mapping the local
         social graph and scoring tracks by{" "}
@@ -293,7 +302,7 @@ export function SceneStep({
           )}
 
           {/* Scene graph visualization */}
-          {sceneUsers.length > 0 && (
+          {sceneUsers.length > 0 && showGraph && (
             <div>
               <p className="text-sm text-zinc-400 mb-1">
                 {progress.seedsFound} seeds + {progress.sceneMembersFound - progress.seedsFound} connected artists
@@ -303,6 +312,19 @@ export function SceneStep({
                 edges={sceneEdges}
                 phase={progress.phase}
               />
+            </div>
+          )}
+          {sceneUsers.length > 0 && !showGraph && (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 text-center">
+              <p className="text-sm text-zinc-400 mb-1">
+                {progress.seedsFound} seeds + {progress.sceneMembersFound - progress.seedsFound} connected artists
+              </p>
+              <p className="text-sm text-zinc-500 mt-3">
+                Network graph visualization is available on the{" "}
+                <a href="/dashboard/pricing" className="text-orange-400 hover:text-orange-300 underline">
+                  Unlimited plan
+                </a>.
+              </p>
             </div>
           )}
         </div>

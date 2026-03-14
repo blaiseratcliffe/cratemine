@@ -6,6 +6,7 @@ export interface PlanConfig {
   maxPlaylistsPerDay: number; // 0 = unlimited
   maxTracksPerRun: number; // 0 = unlimited
   maxSeeds: number; // 0 = unlimited
+  maxSavedSearches: number; // 0 = unlimited
   removeBranding: boolean;
 }
 
@@ -16,6 +17,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
     maxPlaylistsPerDay: 1,
     maxTracksPerRun: 500,
     maxSeeds: 10,
+    maxSavedSearches: 0,
     removeBranding: false,
   },
   pro: {
@@ -24,6 +26,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
     maxPlaylistsPerDay: 5,
     maxTracksPerRun: 2000,
     maxSeeds: 0,
+    maxSavedSearches: 2,
     removeBranding: true,
   },
   unlimited: {
@@ -32,6 +35,7 @@ export const PLANS: Record<Plan, PlanConfig> = {
     maxPlaylistsPerDay: 0,
     maxTracksPerRun: 0,
     maxSeeds: 0,
+    maxSavedSearches: 25,
     removeBranding: true,
   },
 };
@@ -41,6 +45,8 @@ export const PLANS: Record<Plan, PlanConfig> = {
  * Admins get unlimited everything.
  */
 export function getEffectivePlan(plan: string, role: string): PlanConfig {
-  if (role === "admin") return PLANS.unlimited;
+  if (role === "admin") {
+    return { ...PLANS.unlimited, maxSavedSearches: 0 }; // 0 = unlimited for admin
+  }
   return PLANS[plan as Plan] ?? PLANS.free;
 }
