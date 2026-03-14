@@ -3,10 +3,13 @@ import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { readFile, unlink, readdir } from "fs/promises";
+import { readFile, unlink, readdir, stat } from "fs/promises";
 import path from "path";
 
 const execFileAsync = promisify(execFile);
+
+// Max file size: 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || "/tmp/downloads";
 
@@ -51,12 +54,25 @@ export async function GET(
     `${track.user.username} - ${track.title}`
   );
 
+  // Clean up stale temp files older than 5 minutes (fire and forget)
+  cleanupStaleFiles().catch(() => {});
+
   // Try yt-dlp first
   const result = await downloadWithYtdlp(id, track.permalink_url);
 
   if (result) {
     const { filePath, mimeType, ext } = result;
     try {
+      // Check file size before reading into memory
+      const fileStat = await stat(filePath);
+      if (fileStat.size > MAX_FILE_SIZE) {
+        unlink(filePath).catch(() => {});
+        return NextResponse.json(
+          { error: "File too large to download" },
+          { status: 413 }
+        );
+      }
+
       const fileBuffer = await readFile(filePath);
 
       // Clean up temp file in background
@@ -66,6 +82,8 @@ export async function GET(
         headers: buildDownloadHeaders(safeFilename, ext, mimeType, fileBuffer.length),
       });
     } catch (err) {
+      // Clean up on failure
+      unlink(filePath).catch(() => {});
       console.error(`[stream] Failed to read downloaded file:`, err);
     }
   }
@@ -262,4 +280,28 @@ function streamResponse(res: Response, filename: string) {
         : undefined
     ),
   });
+}
+
+/** Remove temp files older than 5 minutes */
+async function cleanupStaleFiles() {
+  const maxAge = 5 * 60 * 1000;
+  const now = Date.now();
+  const resolvedDir = path.resolve(DOWNLOAD_DIR);
+
+  try {
+    const files = await readdir(resolvedDir);
+    for (const file of files) {
+      const filePath = path.join(resolvedDir, file);
+      try {
+        const fileStat = await stat(filePath);
+        if (now - fileStat.mtimeMs > maxAge) {
+          await unlink(filePath);
+        }
+      } catch {
+        // File may have been deleted by another request
+      }
+    }
+  } catch {
+    // Download dir may not exist yet
+  }
 }

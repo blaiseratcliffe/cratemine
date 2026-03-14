@@ -22,8 +22,12 @@ RUN apk add --no-cache python3 ffmpeg curl \
     && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp
 
-# Create tmp dir for downloads
-RUN mkdir -p /tmp/downloads && chmod 777 /tmp/downloads
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+# Create tmp dir for downloads owned by nextjs
+RUN mkdir -p /tmp/downloads && chown nextjs:nodejs /tmp/downloads
 
 # Copy standalone build
 COPY --from=builder /app/.next/standalone ./
@@ -34,6 +38,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+
+# Switch to non-root user
+USER nextjs
 
 EXPOSE 3000
 

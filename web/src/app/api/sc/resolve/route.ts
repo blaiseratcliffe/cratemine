@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
+import { verifyCsrf } from "@/lib/csrf";
 
 interface ResolvedEntity {
   kind?: string;
@@ -15,6 +16,9 @@ interface ResolvedEntity {
  * POST body: { url: string }
  */
 export async function POST(request: NextRequest) {
+  const csrfError = verifyCsrf(request);
+  if (csrfError) return csrfError;
+
   const token = await getValidSCToken();
   if (!token) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

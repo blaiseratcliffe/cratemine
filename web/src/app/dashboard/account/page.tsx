@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 interface User {
   id: number;
@@ -47,8 +48,7 @@ export default function AccountPage() {
   }, [router]);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
+    await signOut({ redirectTo: "/" });
   }
 
   if (loading) {
