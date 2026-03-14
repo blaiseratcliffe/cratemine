@@ -6,9 +6,12 @@ import type { SCUserTracksResponse } from "@/lib/soundcloud/types";
 /**
  * Fetch a user's tracks. Single page (200 max) for speed.
  * SoundCloud returns newest first, so one page captures recent tracks.
+ *
+ * Optional query param:
+ *   ?since=2025-12-13T00:00:00Z — only return tracks created after this date
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = await getValidSCToken();
@@ -21,16 +24,22 @@ export async function GET(
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
+  const query: Record<string, string> = {
+    limit: "200",
+    linked_partitioning: "true",
+  };
+
+  // Optional date filter
+  const since = request.nextUrl.searchParams.get("since");
+  if (since) {
+    query["created_at[from]"] = since;
+  }
+
   const res = await scReq<SCUserTracksResponse>(
     "GET",
     `/users/${id}/tracks`,
     token,
-    {
-      query: {
-        limit: "200",
-        linked_partitioning: "true",
-      },
-    }
+    { query }
   );
 
   if (res.status !== 200 || !res.json) {
@@ -40,5 +49,14 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ tracks: res.json.collection || [] });
+  // Client-side date filter as safety net (SoundCloud may not always respect the param)
+  let tracks = res.json.collection || [];
+  if (since) {
+    const sinceMs = new Date(since).getTime();
+    if (!isNaN(sinceMs)) {
+      tracks = tracks.filter((t) => new Date(t.created_at).getTime() >= sinceMs);
+    }
+  }
+
+  return NextResponse.json({ tracks });
 }

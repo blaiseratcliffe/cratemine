@@ -349,6 +349,11 @@ export function useSCSceneMap(actions: SceneMapActions) {
       const allTracks: SCTrackRaw[] = [];
       const seenTrackIds = new Set<number>();
 
+      // Build date filter from recencyDays
+      const sinceDate = new Date();
+      sinceDate.setDate(sinceDate.getDate() - config.recencyDays);
+      const sinceParam = sinceDate.toISOString();
+
       for (let i = 0; i < sceneMembers.length; i++) {
         if (abortRef.current) break;
 
@@ -360,7 +365,9 @@ export function useSCSceneMap(actions: SceneMapActions) {
           currentUser: member.username,
         });
 
-        const resp = await fetch(`/api/sc/users/${member.id}/tracks`);
+        const resp = await fetch(
+          `/api/sc/users/${member.id}/tracks?since=${encodeURIComponent(sinceParam)}`
+        );
         if (!resp.ok) continue;
 
         const data: { tracks: SCTrackRaw[] } = await resp.json();
