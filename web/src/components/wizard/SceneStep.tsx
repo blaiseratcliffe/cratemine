@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SceneConfig, SceneEdge, SceneProgress, SceneUser } from "@/types";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { Tooltip } from "@/components/ui/Tooltip";
 import { SceneGraph } from "./SceneGraph";
 
 interface Props {
@@ -40,6 +41,18 @@ export function SceneStep({
 }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Ctrl+Enter keyboard shortcut to discover
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !progress.isRunning && config.city.trim()) {
+        e.preventDefault();
+        onDiscover();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  });
+
   const phaseLabel = PHASE_LABELS[progress.phase];
   const phaseDetail =
     progress.phase === "seeds"
@@ -58,13 +71,11 @@ export function SceneStep({
       <p className="text-sm text-zinc-400">
         Find what&apos;s trending in a city&apos;s underground scene by mapping the local
         social graph and scoring tracks by{" "}
-        <span
-          className="underline decoration-dotted cursor-help"
-          title="Repost velocity measures how fast a track is being shared. It's calculated as reposts per day, weighted by how connected the track is to the local scene and boosted for recency (newer tracks score higher)."
-        >
-          repost velocity
-        </span>
-        .
+        <Tooltip content="Repost velocity measures how fast a track is being shared. It's calculated as reposts per day, weighted by how connected the track is to the local scene and boosted for recency (newer tracks score higher).">
+          <span className="underline decoration-dotted cursor-help">
+            repost velocity
+          </span>
+        </Tooltip>.
       </p>
 
       <div>

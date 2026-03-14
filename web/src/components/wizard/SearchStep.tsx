@@ -39,6 +39,18 @@ export function SearchStep({
     }
   }, [progress.foundNames]);
 
+  // Ctrl+Enter keyboard shortcut to search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !progress.isRunning) {
+        e.preventDefault();
+        handleSearch();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  });
+
   function handleSearch() {
     const queries = queriesText
       .split("\n")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useWizardState } from "@/hooks/useWizardState";
 import { useSCSearch } from "@/hooks/useSCSearch";
 import { useSCTrackFetch } from "@/hooks/useSCTrackFetch";
@@ -266,7 +267,15 @@ export function WizardShell() {
         </div>
       )}
 
-      {/* Step content */}
+      {/* Step content with transition */}
+      <AnimatePresence mode="wait">
+      <motion.div
+        key={state.step}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.15 }}
+      >
       {state.step === "search" && (
         <SearchStep
           config={state.searchConfig}
@@ -375,6 +384,8 @@ export function WizardShell() {
           onReset={() => dispatch({ type: "RESET" })}
         />
       )}
+      </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

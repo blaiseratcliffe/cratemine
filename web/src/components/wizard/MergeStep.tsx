@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MyPlaylist, MergeProgress } from "@/types";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface Props {
   playlists: MyPlaylist[];
@@ -37,6 +40,7 @@ export function MergeStep({
   onNext,
 }: Props) {
   const [loaded, setLoaded] = useState(false);
+  const [filter, setFilter] = useState("");
 
   // Load playlists on mount
   useEffect(() => {
@@ -46,8 +50,16 @@ export function MergeStep({
     }
   }, [loaded, playlists.length, onLoadPlaylists]);
 
+  const filteredPlaylists = useMemo(() => {
+    if (!filter.trim()) return playlists;
+    const q = filter.toLowerCase();
+    return playlists.filter((p) => p.title.toLowerCase().includes(q));
+  }, [playlists, filter]);
+
   const selectedCount = playlists.filter((p) => p.selected).length;
-  const allSelected = playlists.length > 0 && selectedCount === playlists.length;
+  const allFilteredSelected =
+    filteredPlaylists.length > 0 &&
+    filteredPlaylists.every((p) => p.selected);
   const totalSelectedTracks = playlists
     .filter((p) => p.selected)
     .reduce((sum, p) => sum + p.trackCount, 0);
@@ -64,7 +76,8 @@ export function MergeStep({
         </h2>
         {playlists.length > 0 && (
           <span className="text-sm text-zinc-400">
-            {playlists.length} playlist{playlists.length !== 1 ? "s" : ""} found
+            {playlists.length} playlist
+            {playlists.length !== 1 ? "s" : ""} found
           </span>
         )}
       </div>
@@ -76,35 +89,56 @@ export function MergeStep({
 
       {/* Loading state */}
       {isLoading && (
-        <div className="text-sm text-zinc-400 animate-pulse">
-          Loading your playlists...
+        <div className="flex items-center gap-3 py-8 justify-center">
+          <Spinner />
+          <span className="text-sm text-zinc-400">
+            Loading your playlists...
+          </span>
         </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && loaded && playlists.length === 0 && (
+        <EmptyState
+          icon="playlist"
+          title="No playlists found"
+          description="You don't have any playlists on SoundCloud yet."
+        />
       )}
 
       {/* Playlist table */}
       {playlists.length > 0 && (
         <>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
               <input
                 type="checkbox"
-                checked={allSelected}
-                onChange={() => onSelectAll(!allSelected)}
+                checked={allFilteredSelected}
+                onChange={() => onSelectAll(!allFilteredSelected)}
                 className="accent-orange-500"
               />
               Select all
             </label>
             {selectedCount > 0 && (
               <span className="text-sm text-zinc-500">
-                {selectedCount} selected ({totalSelectedTracks.toLocaleString()}{" "}
-                tracks)
+                {selectedCount} selected (
+                {totalSelectedTracks.toLocaleString()} tracks)
               </span>
             )}
+            <div className="ml-auto">
+              <input
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder="Filter playlists..."
+                className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none w-48"
+              />
+            </div>
           </div>
 
           <div className="border border-zinc-800 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="bg-zinc-900 sticky top-0">
+              <thead className="bg-zinc-900 sticky top-0 z-10">
                 <tr>
                   <th className="p-2 text-left text-zinc-400 w-10"></th>
                   <th className="p-2 text-left text-zinc-400">Title</th>
@@ -115,7 +149,7 @@ export function MergeStep({
                 </tr>
               </thead>
               <tbody>
-                {playlists.map((pl) => (
+                {filteredPlaylists.map((pl) => (
                   <tr
                     key={pl.id}
                     className={`border-t border-zinc-800 cursor-pointer transition-colors ${
@@ -163,6 +197,13 @@ export function MergeStep({
                     </td>
                   </tr>
                 ))}
+                {filteredPlaylists.length === 0 && filter && (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-zinc-500 text-sm">
+                      No playlists match &quot;{filter}&quot;
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -171,24 +212,11 @@ export function MergeStep({
 
       {/* Fetch progress */}
       {isFetching && (
-        <div className="bg-zinc-900 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-zinc-400 animate-pulse">
-              Fetching tracks from: {progress.currentPlaylist}
-            </span>
-            <span className="text-sm text-zinc-500">
-              {progress.completed}/{progress.total}
-            </span>
-          </div>
-          <div className="w-full bg-zinc-800 rounded-full h-2">
-            <div
-              className="bg-orange-500 h-2 rounded-full transition-all"
-              style={{
-                width: `${progress.total > 0 ? (progress.completed / progress.total) * 100 : 0}%`,
-              }}
-            />
-          </div>
-        </div>
+        <ProgressBar
+          completed={progress.completed}
+          total={progress.total}
+          label={`Fetching: ${progress.currentPlaylist}`}
+        />
       )}
 
       {/* Done state */}

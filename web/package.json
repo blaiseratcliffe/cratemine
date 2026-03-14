@@ -14,6 +14,7 @@
     "@prisma/client": "^6.19.2",
     "@types/d3-force": "^3.0.10",
     "d3-force": "^3.0.0",
+    "framer-motion": "^12.36.0",
     "iron-session": "^8.0.4",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",

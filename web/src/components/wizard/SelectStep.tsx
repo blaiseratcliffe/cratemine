@@ -2,6 +2,7 @@
 
 import type { PlaylistCandidate, WizardState } from "@/types";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 interface Props {
   playlists: PlaylistCandidate[];
@@ -38,9 +39,17 @@ export function SelectStep({
         </span>
       </div>
 
-      <div className="border border-zinc-800 rounded-lg overflow-hidden">
+      {playlists.length === 0 && !trackFetchProgress.isRunning && (
+        <EmptyState
+          icon="search"
+          title="No playlists found"
+          description="Try different search terms, fewer filters, or broader keywords."
+        />
+      )}
+
+      {playlists.length > 0 && <div className="border border-zinc-800 rounded-lg overflow-hidden max-h-[28rem] overflow-y-auto">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-900">
+          <thead className="bg-zinc-900 sticky top-0 z-10">
             <tr>
               <th className="p-2 text-left">
                 <input
@@ -87,7 +96,7 @@ export function SelectStep({
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {trackFetchProgress.isRunning && (
         <ProgressBar
