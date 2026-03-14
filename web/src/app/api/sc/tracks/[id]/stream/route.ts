@@ -90,10 +90,14 @@ function buildDownloadHeaders(
   mimeType: string,
   contentLength?: number
 ): Record<string, string> {
-  const encoded = encodeURIComponent(`${filename}.${ext}`);
+  const full = `${filename}.${ext}`;
+  // ASCII fallback: replace non-ASCII with underscore, keep spaces
+  const ascii = full.replace(/[^\x20-\x7E]/g, "_");
+  // UTF-8 encoded version for filename*
+  const encoded = encodeURIComponent(full);
   const headers: Record<string, string> = {
     "Content-Type": mimeType,
-    "Content-Disposition": `attachment; filename="${encoded}"; filename*=UTF-8''${encoded}`,
+    "Content-Disposition": `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`,
   };
   if (contentLength) {
     headers["Content-Length"] = String(contentLength);

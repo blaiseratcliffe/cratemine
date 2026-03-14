@@ -117,8 +117,14 @@ export function PreviewStep({
       const disposition = res.headers.get("Content-Disposition");
       let filename = `${track.username} - ${track.title}.mp3`;
       if (disposition) {
-        const match = disposition.match(/filename="(.+)"/);
-        if (match) filename = match[1];
+        // Prefer filename* (UTF-8 encoded) over filename (ASCII)
+        const utf8Match = disposition.match(/filename\*=UTF-8''(.+?)(?:;|$)/);
+        if (utf8Match) {
+          filename = decodeURIComponent(utf8Match[1]);
+        } else {
+          const match = disposition.match(/filename="(.+?)"/);
+          if (match) filename = match[1];
+        }
       }
 
       const url = URL.createObjectURL(blob);
