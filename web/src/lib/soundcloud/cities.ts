@@ -4,15 +4,28 @@
  * Strategy:
  * 1. Split messy strings by / and , into segments
  * 2. Clean each segment (strip country codes, parentheticals)
- * 3. Check aliases map for known corrections (NYC → New York)
- * 4. Skip segments that are country names
- * 5. Reject segments that look like slogans/garbage (blocklist words)
- * 6. Accept the first segment that passes all checks
- * 7. Fall back to "Unknown"
+ * 3. Strip accents for consistent matching
+ * 4. Check aliases map for corrections (NYC → New York, Köln → Cologne)
+ * 5. Check neighborhood → parent city map (South London → London)
+ * 6. Skip segments that are country names
+ * 7. Reject segments that look like slogans/garbage (blocklist words)
+ * 8. Accept the first segment that passes all checks
+ * 9. Fall back to "Unknown"
  */
 
-/** Common aliases and abbreviations → canonical city name */
+/**
+ * Strip diacritics/accents: São → Sao, Zürich → Zurich, Malmö → Malmo
+ */
+function stripAccents(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * Common aliases, abbreviations, and cross-language synonyms → canonical name.
+ * Keys are lowercase and accent-stripped.
+ */
 const CITY_ALIASES = new Map<string, string>([
+  // English abbreviations
   ["nyc", "New York"],
   ["ny", "New York"],
   ["la", "Los Angeles"],
@@ -20,8 +33,8 @@ const CITY_ALIASES = new Map<string, string>([
   ["dc", "Washington"],
   ["philly", "Philadelphia"],
   ["nola", "New Orleans"],
-  ["bk", "Brooklyn"],
-  ["bklyn", "Brooklyn"],
+  ["chi", "Chicago"],
+  ["atl", "Atlanta"],
   ["ldn", "London"],
   ["mcr", "Manchester"],
   ["bris", "Bristol"],
@@ -39,9 +52,158 @@ const CITY_ALIASES = new Map<string, string>([
   ["ffm", "Frankfurt"],
   ["bcn", "Barcelona"],
   ["cdmx", "Mexico City"],
+  ["ist", "Istanbul"],
+
+  // St / Saint variants
+  ["st petersburg", "Saint Petersburg"],
+  ["st. petersburg", "Saint Petersburg"],
+  ["saint petersburg", "Saint Petersburg"],
+  ["st louis", "Saint Louis"],
+  ["st. louis", "Saint Louis"],
+  ["saint louis", "Saint Louis"],
+  ["st paul", "Saint Paul"],
+  ["st. paul", "Saint Paul"],
+  ["saint paul", "Saint Paul"],
+
+  // Cross-language city names
+  ["koln", "Cologne"],          // Köln → Cologne (accent-stripped key)
+  ["cologne", "Cologne"],
+  ["munchen", "Munich"],        // München → Munich
+  ["munich", "Munich"],
+  ["wien", "Vienna"],
+  ["vienna", "Vienna"],
+  ["zurich", "Zurich"],         // Zürich → Zurich
+  ["geneve", "Geneva"],         // Genève → Geneva
+  ["geneva", "Geneva"],
+  ["kobenhavn", "Copenhagen"],  // København → Copenhagen
+  ["copenhagen", "Copenhagen"],
+  ["goteborg", "Gothenburg"],   // Göteborg → Gothenburg
+  ["gothenburg", "Gothenburg"],
+  ["malmo", "Malmö"],           // Malmö stays as Malmö
+  ["moskva", "Moscow"],
+  ["moscow", "Moscow"],
+  ["roma", "Rome"],
+  ["rome", "Rome"],
+  ["milano", "Milan"],
+  ["milan", "Milan"],
+  ["napoli", "Naples"],
+  ["naples", "Naples"],
+  ["firenze", "Florence"],
+  ["florence", "Florence"],
+  ["venezia", "Venice"],
+  ["venice", "Venice"],
+  ["torino", "Turin"],
+  ["turin", "Turin"],
+  ["lisboa", "Lisbon"],
+  ["lisbon", "Lisbon"],
+  ["warszawa", "Warsaw"],
+  ["warsaw", "Warsaw"],
+  ["praha", "Prague"],
+  ["prague", "Prague"],
+  ["athina", "Athens"],
+  ["athens", "Athens"],
+  ["bukarest", "Bucharest"],
+  ["bucharest", "Bucharest"],
+  ["den haag", "The Hague"],
+  ["the hague", "The Hague"],
+  ["sao paulo", "São Paulo"],
+  ["rio de janeiro", "Rio De Janeiro"],
+
+  // Brooklyn abbreviations
+  ["bk", "Brooklyn"],
+  ["bklyn", "Brooklyn"],
+
+  // São Paulo / Rio abbreviations
   ["sp", "São Paulo"],
   ["rj", "Rio De Janeiro"],
-  ["ist", "Istanbul"],
+]);
+
+/**
+ * Neighborhood / district → parent city mapping.
+ * Keys are lowercase and accent-stripped.
+ */
+const NEIGHBORHOOD_TO_CITY = new Map<string, string>([
+  // London
+  ["south london", "London"],
+  ["north london", "London"],
+  ["east london", "London"],
+  ["west london", "London"],
+  ["central london", "London"],
+  ["south east london", "London"],
+  ["south west london", "London"],
+  ["north east london", "London"],
+  ["north west london", "London"],
+  ["hackney", "London"],
+  ["brixton", "London"],
+  ["camden", "London"],
+  ["shoreditch", "London"],
+  ["dalston", "London"],
+  ["peckham", "London"],
+  ["lewisham", "London"],
+  ["croydon", "London"],
+  ["tottenham", "London"],
+  ["stratford", "London"],
+  ["woolwich", "London"],
+  ["deptford", "London"],
+  ["bermondsey", "London"],
+  ["islington", "London"],
+  ["soho", "London"],
+
+  // New York
+  ["brooklyn", "New York"],
+  ["manhattan", "New York"],
+  ["queens", "New York"],
+  ["bronx", "New York"],
+  ["the bronx", "New York"],
+  ["staten island", "New York"],
+  ["harlem", "New York"],
+  ["bushwick", "New York"],
+  ["williamsburg", "New York"],
+  ["bed stuy", "New York"],
+  ["bed-stuy", "New York"],
+
+  // Los Angeles
+  ["hollywood", "Los Angeles"],
+  ["silver lake", "Los Angeles"],
+  ["echo park", "Los Angeles"],
+  ["downtown la", "Los Angeles"],
+  ["dtla", "Los Angeles"],
+  ["south la", "Los Angeles"],
+  ["east la", "Los Angeles"],
+  ["west la", "Los Angeles"],
+  ["koreatown", "Los Angeles"],
+  ["venice beach", "Los Angeles"],
+
+  // Paris
+  ["montmartre", "Paris"],
+  ["belleville", "Paris"],
+  ["pigalle", "Paris"],
+
+  // Berlin
+  ["kreuzberg", "Berlin"],
+  ["neukolln", "Berlin"],   // Neukölln
+  ["friedrichshain", "Berlin"],
+  ["prenzlauer berg", "Berlin"],
+  ["mitte", "Berlin"],
+
+  // Manchester
+  ["salford", "Manchester"],
+  ["hulme", "Manchester"],
+  ["moss side", "Manchester"],
+
+  // Bristol
+  ["stokes croft", "Bristol"],
+  ["st pauls", "Bristol"],
+  ["st. pauls", "Bristol"],
+  ["easton", "Bristol"],
+  ["montpelier", "Bristol"],
+
+  // Tokyo
+  ["shibuya", "Tokyo"],
+  ["shinjuku", "Tokyo"],
+  ["harajuku", "Tokyo"],
+  ["roppongi", "Tokyo"],
+  ["akihabara", "Tokyo"],
 ]);
 
 /** Country names/codes — skip these as they're not cities */
@@ -97,6 +259,9 @@ const GARBAGE_PATTERNS = [
  * - "Berlin, Germany" → "Berlin"
  * - "Edmonton AB" → "Edmonton"
  * - "NYC" → "New York"
+ * - "Köln" → "Cologne"
+ * - "South London" → "London"
+ * - "São Paulo" and "Sao Paulo" → "São Paulo"
  * - null → "Unknown"
  */
 export function normalizeCity(raw: string | null): string {
@@ -124,17 +289,22 @@ function classifySegment(segment: string): string | null {
   if (!cleaned || cleaned.length < 2) return null;
 
   const lower = cleaned.toLowerCase();
+  const stripped = stripAccents(lower);
 
-  // Check aliases first (NYC → New York)
-  const alias = CITY_ALIASES.get(lower);
+  // Check aliases first (NYC → New York, Köln → Cologne)
+  const alias = CITY_ALIASES.get(stripped) || CITY_ALIASES.get(lower);
   if (alias) return alias;
 
+  // Check neighborhood → parent city (South London → London)
+  const neighborhood = NEIGHBORHOOD_TO_CITY.get(stripped) || NEIGHBORHOOD_TO_CITY.get(lower);
+  if (neighborhood) return neighborhood;
+
   // Skip country names
-  if (COUNTRIES.has(lower)) return null;
+  if (COUNTRIES.has(stripped) || COUNTRIES.has(lower)) return null;
 
   // Reject garbage patterns
   for (const pattern of GARBAGE_PATTERNS) {
-    if (lower.includes(pattern)) return null;
+    if (lower.includes(pattern) || stripped.includes(pattern)) return null;
   }
 
   // Reject if it's too long (>40 chars) — probably a slogan
@@ -154,7 +324,7 @@ function classifySegment(segment: string): string | null {
     return null;
   }
 
-  // Passes all checks — treat as a city name
+  // Passes all checks — treat as a city name, title-case it
   return titleCase(cleaned);
 }
 
