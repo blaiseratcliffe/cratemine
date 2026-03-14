@@ -30,12 +30,12 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Copy prisma schema + CLI for db push at startup
+# Copy prisma schema + full node_modules for db push at startup
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
 EXPOSE 3000
 
 # Push schema to DB then start the app
-CMD npx prisma db push --skip-generate && node server.js
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node server.js"]
