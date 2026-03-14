@@ -64,13 +64,18 @@ export function PreviewStep({
   const [sortField, setSortField] = useState<SortField>("score");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [minDuration, setMinDuration] = useState(30); // seconds
+  const [maxDuration, setMaxDuration] = useState(600); // seconds (10 min)
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Recompute merged tracks when weights or maxTracks change
+  // Recompute merged tracks when weights, maxTracks, or duration filter change
   useEffect(() => {
-    const result = mergeTracks(tracks, weights, maxTracks);
+    const result = mergeTracks(tracks, weights, maxTracks, {
+      minSec: minDuration,
+      maxSec: maxDuration,
+    });
     onMergedTracksChange(result);
-  }, [tracks, weights, maxTracks, onMergedTracksChange]);
+  }, [tracks, weights, maxTracks, minDuration, maxDuration, onMergedTracksChange]);
 
   const sortedTracks = useMemo(() => {
     const sorted = [...mergedTracks].sort((a, b) => {
@@ -260,7 +265,7 @@ export function PreviewStep({
         />
       </div>
 
-      <div className="flex items-center gap-4 bg-zinc-900 rounded-lg p-4">
+      <div className="flex items-center gap-4 flex-wrap bg-zinc-900 rounded-lg p-4">
         <label className="text-sm text-zinc-400">Max tracks:</label>
         <input
           type="number"
@@ -270,6 +275,28 @@ export function PreviewStep({
           onChange={(e) => onMaxTracksChange(parseInt(e.target.value) || 500)}
           className="w-24 bg-zinc-800 border border-zinc-700 rounded p-1 text-white text-sm focus:border-orange-500 focus:outline-none"
         />
+        <span className="text-zinc-700">|</span>
+        <label className="text-sm text-zinc-400">Duration:</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min="0"
+            max="3600"
+            value={minDuration}
+            onChange={(e) => setMinDuration(Math.max(0, parseInt(e.target.value) || 0))}
+            className="w-16 bg-zinc-800 border border-zinc-700 rounded p-1 text-white text-sm focus:border-orange-500 focus:outline-none"
+          />
+          <span className="text-xs text-zinc-500">to</span>
+          <input
+            type="number"
+            min="1"
+            max="7200"
+            value={maxDuration}
+            onChange={(e) => setMaxDuration(Math.max(1, parseInt(e.target.value) || 600))}
+            className="w-16 bg-zinc-800 border border-zinc-700 rounded p-1 text-white text-sm focus:border-orange-500 focus:outline-none"
+          />
+          <span className="text-xs text-zinc-500">sec</span>
+        </div>
       </div>
 
       {/* Track table */}

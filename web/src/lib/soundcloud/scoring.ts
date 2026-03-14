@@ -112,25 +112,45 @@ export function filterAccess(tracks: ScoredTrack[]): ScoredTrack[] {
 }
 
 /**
- * Full merge pipeline: dedup + filter access + sort + cap.
+ * Filter tracks by duration range.
+ */
+export function filterDuration(
+  tracks: ScoredTrack[],
+  minSec: number,
+  maxSec: number
+): ScoredTrack[] {
+  const minMs = minSec * 1000;
+  const maxMs = maxSec * 1000;
+  return tracks.filter((t) => {
+    if (!t.duration || t.duration <= 0) return true; // keep tracks with unknown duration
+    return t.duration >= minMs && t.duration <= maxMs;
+  });
+}
+
+/**
+ * Full merge pipeline: dedup + filter access + filter duration + sort + cap.
  */
 export function mergeTracks(
   tracks: ScoredTrack[],
   weights: ScoringWeights,
-  maxTracks?: number
+  maxTracks?: number,
+  durationRange?: { minSec: number; maxSec: number }
 ): ScoredTrack[] {
   let result = rescoreTracks(tracks, weights);
-  const afterRescore = result.length;
   result = dedupTracks(result);
   const afterDedup = result.length;
   result = filterAccess(result);
   const afterAccess = result.length;
+  if (durationRange) {
+    result = filterDuration(result, durationRange.minSec, durationRange.maxSec);
+  }
+  const afterDuration = result.length;
   result = sortByScore(result);
   if (maxTracks && maxTracks > 0) {
     result = result.slice(0, maxTracks);
   }
   console.log(
-    `[MergeTracks] ${tracks.length} input → ${afterDedup} deduped → ${afterAccess} after access filter → ${result.length} final (cap ${maxTracks})`
+    `[MergeTracks] ${tracks.length} input → ${afterDedup} deduped → ${afterAccess} access → ${afterDuration} duration → ${result.length} final (cap ${maxTracks})`
   );
   return result;
 }
