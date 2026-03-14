@@ -23,6 +23,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
   const [modal, setModal] = useState<ModalType>(null);
   const [modalText, setModalText] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -39,14 +40,28 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  // Escape key to close dropdown/modal
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        if (modal) setModal(null);
+        else if (open) setOpen(false);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [open, modal]);
+
   function openModal(type: ModalType) {
     setModal(type);
     setOpen(false);
     setModalText("");
     setSubmitted(false);
+    setSubmitError(false);
   }
 
   async function handleSubmitModal() {
+    setSubmitError(false);
     try {
       const res = await fetch("/api/feedback", {
         method: "POST",
@@ -56,7 +71,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
       if (!res.ok) throw new Error();
       setSubmitted(true);
     } catch {
-      alert("Failed to submit. Please try again.");
+      setSubmitError(true);
     }
   }
 
@@ -65,6 +80,8 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
       <div ref={menuRef} className="relative">
         <button
           onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-haspopup="true"
           className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors cursor-pointer"
         >
           {(user.authImage || user.avatar_url) && (
@@ -76,7 +93,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
           )}
           <span>{displayName}</span>
           <svg
-            className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -91,7 +108,10 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
         </button>
 
         {open && (
-          <div className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50 overflow-hidden">
+          <div
+            role="menu"
+            className="absolute right-0 mt-2 w-64 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
+          >
             {/* User info section */}
             <div className="px-4 py-3 border-b border-zinc-800">
               <p className="text-xs text-zinc-500 uppercase tracking-wide">
@@ -121,18 +141,21 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
             {/* Menu items */}
             <div className="py-1">
               <button
+                role="menuitem"
                 onClick={() => openModal("report")}
                 className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
               >
                 Report an issue
               </button>
               <button
+                role="menuitem"
                 onClick={() => openModal("feedback")}
                 className="w-full text-left px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
               >
                 Feedback
               </button>
               <button
+                role="menuitem"
                 onClick={() => {
                   setOpen(false);
                   router.push("/dashboard/account");
@@ -146,6 +169,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
             {/* Logout */}
             <div className="border-t border-zinc-800 py-1">
               <button
+                role="menuitem"
                 onClick={onLogout}
                 className="w-full text-left px-4 py-2.5 text-sm text-zinc-500 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
               >
@@ -158,7 +182,7 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
 
       {/* Report / Feedback Modal */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-zinc-900 border border-zinc-700 rounded-lg w-full max-w-md mx-4 shadow-2xl">
             <div className="px-5 py-4 border-b border-zinc-800">
               <h2 className="text-lg font-semibold text-white">
@@ -178,18 +202,25 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
                   been submitted.
                 </p>
               ) : (
-                <textarea
-                  value={modalText}
-                  onChange={(e) => setModalText(e.target.value)}
-                  placeholder={
-                    modal === "report"
-                      ? "What went wrong?"
-                      : "Your feedback..."
-                  }
-                  rows={5}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-sm text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none resize-none"
-                  autoFocus
-                />
+                <>
+                  <textarea
+                    value={modalText}
+                    onChange={(e) => setModalText(e.target.value)}
+                    placeholder={
+                      modal === "report"
+                        ? "What went wrong?"
+                        : "Your feedback..."
+                    }
+                    rows={5}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg p-3 text-sm text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none resize-none"
+                    autoFocus
+                  />
+                  {submitError && (
+                    <p className="text-sm text-red-400 mt-2">
+                      Failed to submit. Please try again.
+                    </p>
+                  )}
+                </>
               )}
             </div>
 

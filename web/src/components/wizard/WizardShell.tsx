@@ -199,78 +199,72 @@ export function WizardShell() {
   return (
     <div>
       {/* Mode toggle */}
-      <div className="flex items-center gap-1 mb-6 bg-zinc-900 rounded-lg p-1 w-fit">
-        <button
-          onClick={() => handleModeChange("playlists")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            state.discoveryMode === "playlists"
-              ? "bg-orange-500 text-white"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Playlist Search
-        </button>
-        <button
-          onClick={() => handleModeChange("scene")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            state.discoveryMode === "scene"
-              ? "bg-orange-500 text-white"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Scene Discovery
-        </button>
-        <button
-          onClick={() => handleModeChange("merge")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            state.discoveryMode === "merge"
-              ? "bg-orange-500 text-white"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Merge Playlists
-        </button>
-        <button
-          onClick={() => handleModeChange("download")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            state.discoveryMode === "download"
-              ? "bg-orange-500 text-white"
-              : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Download Track
-        </button>
+      <div className="flex items-center gap-1 mb-6 bg-zinc-900 rounded-lg p-1 overflow-x-auto">
+        {(
+          [
+            ["playlists", "Playlist Search"],
+            ["scene", "Scene Discovery"],
+            ["merge", "Merge Playlists"],
+            ["download", "Download Track"],
+          ] as const
+        ).map(([mode, label]) => (
+          <button
+            key={mode}
+            onClick={() => handleModeChange(mode)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
+              state.discoveryMode === mode
+                ? "bg-orange-500 text-white"
+                : "text-zinc-400 hover:text-white"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Download mode is standalone — no wizard steps */}
       {state.discoveryMode === "download" && <DownloadStep />}
 
       {/* Step indicator (hidden for download mode) */}
-      {state.discoveryMode !== "download" && <div className="flex items-center gap-2 mb-8">
-        {steps.map((s, i) => (
-          <div key={s.key} className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                i <= currentStepIdx
-                  ? "bg-orange-500 text-white"
-                  : "bg-zinc-800 text-zinc-500"
-              }`}
-            >
-              {i + 1}
+      {state.discoveryMode !== "download" && (
+        <div className="flex items-center gap-2 mb-8">
+          {steps.map((s, i) => (
+            <div key={s.key} className="flex items-center gap-2">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                  i < currentStepIdx
+                    ? "bg-orange-500 text-white"
+                    : i === currentStepIdx
+                      ? "bg-orange-500 text-white ring-2 ring-orange-500/30"
+                      : "bg-zinc-800 text-zinc-500"
+                }`}
+              >
+                {i < currentStepIdx ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  i + 1
+                )}
+              </div>
+              <span
+                className={`text-sm ${
+                  i <= currentStepIdx ? "text-white" : "text-zinc-500"
+                }`}
+              >
+                {s.label}
+              </span>
+              {i < steps.length - 1 && (
+                <div
+                  className={`w-12 h-0.5 mx-1 transition-colors ${
+                    i < currentStepIdx ? "bg-orange-500" : "bg-zinc-700"
+                  }`}
+                />
+              )}
             </div>
-            <span
-              className={`text-sm ${
-                i <= currentStepIdx ? "text-white" : "text-zinc-500"
-              }`}
-            >
-              {s.label}
-            </span>
-            {i < steps.length - 1 && (
-              <div className="w-8 h-px bg-zinc-700 mx-1" />
-            )}
-          </div>
-        ))}
-      </div>}
+          ))}
+        </div>
+      )}
 
       {/* Step content */}
       {state.step === "search" && (

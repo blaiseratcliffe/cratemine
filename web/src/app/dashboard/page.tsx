@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { WizardShell } from "@/components/wizard/WizardShell";
 import { UserMenu } from "@/components/ui/UserMenu";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface SCStatus {
   linked: boolean;
@@ -46,7 +47,7 @@ export default function DashboardPage() {
   if (status === "loading" || !scStatus) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <p className="text-zinc-400">Loading...</p>
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -66,7 +67,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="border-b border-zinc-800 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <img src="/cratemine_logo.png" alt="CrateMine" className="h-16" />
+          <img src="/cratemine_logo.png" alt="CrateMine" className="h-9" />
           <UserMenu user={user} onLogout={handleLogout} />
         </div>
       </header>

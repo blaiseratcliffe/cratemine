@@ -104,7 +104,7 @@ export function SearchStep({
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm text-zinc-400 mb-1">Min tracks</label>
           <input

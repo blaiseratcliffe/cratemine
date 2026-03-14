@@ -166,7 +166,7 @@ export function PreviewStep({
   }) {
     return (
       <th
-        className={`p-2 text-${align} text-zinc-400 cursor-pointer select-none hover:text-zinc-200 transition-colors`}
+        className={`p-2 ${align === "right" ? "text-right" : "text-left"} text-zinc-400 cursor-pointer select-none hover:text-zinc-200 transition-colors`}
         onClick={() => handleSort(field)}
       >
         {label}

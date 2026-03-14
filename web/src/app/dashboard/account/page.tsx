@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface User {
   id: number;
@@ -54,7 +55,7 @@ export default function AccountPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <p className="text-zinc-400">Loading...</p>
+        <Spinner size="lg" />
       </div>
     );
   }

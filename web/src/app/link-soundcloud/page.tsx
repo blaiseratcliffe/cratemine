@@ -59,7 +59,7 @@ export default async function LinkSoundCloudPage() {
 
         <LinkSoundCloudButton />
 
-        <p className="text-sm text-zinc-600">
+        <p className="text-sm text-zinc-500">
           We only access your playlists. You can disconnect at any time.
         </p>
       </main>
