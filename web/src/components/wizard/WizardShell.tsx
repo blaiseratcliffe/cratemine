@@ -27,7 +27,7 @@ import type {
   WizardStep,
 } from "@/types";
 
-export function WizardShell() {
+export function WizardShell({ isAdmin = false }: { isAdmin?: boolean }) {
   const [state, dispatch] = useWizardState();
 
   // --- Search actions ---
@@ -206,7 +206,7 @@ export function WizardShell() {
             ["playlists", "Playlist Search"],
             ["scene", "Scene Discovery"],
             ["merge", "Merge Playlists"],
-            ["download", "Download Track"],
+            ...(isAdmin ? [["download", "Download Track"] as const] : []),
           ] as const
         ).map(([mode, label]) => (
           <button
@@ -363,6 +363,7 @@ export function WizardShell() {
             })
           }
           onNext={() => dispatch({ type: "SET_STEP", step: "create" })}
+          isAdmin={isAdmin}
         />
       )}
 

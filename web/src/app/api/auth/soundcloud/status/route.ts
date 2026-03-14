@@ -20,5 +20,6 @@ export async function GET() {
   return NextResponse.json({
     linked: !!sc,
     soundcloud: sc,
+    role: session.user.role || "user",
   });
 }

@@ -14,6 +14,7 @@ interface Props {
   onMergedTracksChange: (tracks: ScoredTrack[]) => void;
   onBack: () => void;
   onNext: () => void;
+  isAdmin?: boolean;
 }
 
 type SortField =
@@ -46,6 +47,7 @@ export function PreviewStep({
   onMergedTracksChange,
   onBack,
   onNext,
+  isAdmin = false,
 }: Props) {
   const [playingTrackId, setPlayingTrackId] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>("score");
@@ -269,7 +271,7 @@ export function PreviewStep({
               <SortHeader field="likesCount" label="Likes" align="right" />
               <SortHeader field="repostsCount" label="Reposts" align="right" />
               <SortHeader field="score" label="Score" align="right" />
-              <th className="p-2 text-center text-zinc-400 w-10"></th>
+              {isAdmin && <th className="p-2 text-center text-zinc-400 w-10"></th>}
             </tr>
           </thead>
           <tbody>
@@ -352,7 +354,7 @@ export function PreviewStep({
                 <td className="p-2 text-right text-orange-400 font-mono">
                   {t.score.toLocaleString()}
                 </td>
-                <td className="p-2 text-center">
+                {isAdmin && <td className="p-2 text-center">
                   <button
                     onClick={() => handleDownload(t)}
                     disabled={downloadingId !== null}
@@ -395,7 +397,7 @@ export function PreviewStep({
                       </svg>
                     )}
                   </button>
-                </td>
+                </td>}
               </tr>
             ))}
           </tbody>

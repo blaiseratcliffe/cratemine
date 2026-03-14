@@ -13,12 +13,13 @@ interface UserMenuProps {
     authEmail?: string;
     authImage?: string;
   };
+  isAdmin?: boolean;
   onLogout: () => void;
 }
 
 type ModalType = "report" | "feedback" | null;
 
-export function UserMenu({ user, onLogout }: UserMenuProps) {
+export function UserMenu({ user, isAdmin, onLogout }: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const [modal, setModal] = useState<ModalType>(null);
   const [modalText, setModalText] = useState("");
@@ -164,6 +165,18 @@ export function UserMenu({ user, onLogout }: UserMenuProps) {
               >
                 Manage account
               </button>
+              {isAdmin && (
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/dashboard/admin");
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-sm text-orange-400 hover:bg-zinc-800 hover:text-orange-300 transition-colors cursor-pointer"
+                >
+                  Admin panel
+                </button>
+              )}
             </div>
 
             {/* Logout */}

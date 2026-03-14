@@ -14,6 +14,7 @@ interface SCStatus {
     scUsername: string;
     scAvatarUrl: string | null;
   } | null;
+  role: string;
 }
 
 export default function DashboardPage() {
@@ -68,13 +69,13 @@ export default function DashboardPage() {
       <header className="border-b border-zinc-800 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <img src="/cratemine_logo.png" alt="CrateMine" className="h-9" />
-          <UserMenu user={user} onLogout={handleLogout} />
+          <UserMenu user={user} isAdmin={scStatus.role === "admin"} onLogout={handleLogout} />
         </div>
       </header>
 
       {/* Main */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <WizardShell />
+        <WizardShell isAdmin={scStatus.role === "admin"} />
       </main>
     </div>
   );

@@ -4,6 +4,18 @@ import GitHub from "next-auth/providers/github";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      role: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -21,8 +33,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/",
   },
   callbacks: {
-    session({ session, user }) {
+    async session({ session, user }) {
       session.user.id = user.id;
+      // Fetch role from DB (Prisma adapter doesn't include custom fields by default)
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { role: true },
+      });
+      session.user.role = dbUser?.role ?? "user";
       return session;
     },
   },
