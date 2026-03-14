@@ -22,8 +22,6 @@ export default async function LinkSoundCloudPage() {
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <main className="max-w-md mx-auto px-6 text-center space-y-8">
-        <p className="text-sm text-orange-400 font-medium">Step 2 of 2</p>
-
         <img
           src="/cratemine_logo.png"
           alt="CrateMine"

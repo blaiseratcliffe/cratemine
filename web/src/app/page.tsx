@@ -22,12 +22,33 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <main className="max-w-2xl mx-auto px-6 text-center space-y-8">
-        <p className="text-sm text-orange-400 font-medium">Step 1 of 2</p>
         <img
           src="/cratemine_logo.png"
           alt="CrateMine"
-          className="h-[560px] mx-auto"
+          className="h-[370px] mx-auto"
         />
+
+        <div className="grid grid-cols-3 gap-6 pb-8 border-b border-zinc-800">
+          <div>
+            <p className="text-3xl font-bold text-orange-500">1</p>
+            <p className="text-sm text-zinc-400 mt-1">
+              Search, discover, or merge playlists from SoundCloud
+            </p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-orange-500">2</p>
+            <p className="text-sm text-zinc-400 mt-1">
+              Deduplicate, score, sort, and preview tracks
+            </p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-orange-500">3</p>
+            <p className="text-sm text-zinc-400 mt-1">
+              Create playlists or download tracks in one click
+            </p>
+          </div>
+        </div>
+
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">Sign In</h1>
           <p className="text-zinc-400">Choose your preferred method.</p>
@@ -38,27 +59,6 @@ export default async function Home() {
         <p className="text-sm text-zinc-600">
           After signing in, you&apos;ll link your SoundCloud account.
         </p>
-
-        <div className="grid grid-cols-3 gap-6 pt-8 border-t border-zinc-800">
-          <div>
-            <p className="text-3xl font-bold text-orange-500">1</p>
-            <p className="text-sm text-zinc-400 mt-1">
-              Search for playlists by genre, keywords, or tags
-            </p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold text-orange-500">2</p>
-            <p className="text-sm text-zinc-400 mt-1">
-              Preview merged tracks sorted by plays, likes, and reposts
-            </p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold text-orange-500">3</p>
-            <p className="text-sm text-zinc-400 mt-1">
-              Create a playlist on your SoundCloud account in one click
-            </p>
-          </div>
-        </div>
       </main>
     </div>
   );
