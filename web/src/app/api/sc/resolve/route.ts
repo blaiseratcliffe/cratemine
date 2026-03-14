@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getValidSCToken } from "@/lib/soundcloud/tokens";
 import { scReq } from "@/lib/soundcloud/client";
-import type { SCUserFull } from "@/lib/soundcloud/types";
+
+interface ResolvedEntity {
+  kind?: string;
+  id: number;
+  title?: string;
+  username?: string;
+  [key: string]: unknown;
+}
 
 /**
- * Resolve a SoundCloud URL to a user object.
+ * Resolve a SoundCloud URL to an API object (track, user, or playlist).
  * POST body: { url: string }
  */
 export async function POST(request: NextRequest) {
@@ -19,7 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing url" }, { status: 400 });
   }
 
-  const res = await scReq<SCUserFull>("GET", "/resolve", token, {
+  const res = await scReq<ResolvedEntity>("GET", "/resolve", token, {
     query: { url },
   });
 
@@ -30,5 +37,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json({ user: res.json });
+  // Return under the appropriate key based on kind, plus raw resolved object
+  const entity = res.json;
+  return NextResponse.json({
+    kind: entity.kind || "unknown",
+    resolved: entity,
+    // Keep backward compat for scene discovery which expects { user: ... }
+    ...(entity.kind === "user" ? { user: entity } : {}),
+    ...(entity.kind === "track" ? { track: entity } : {}),
+  });
 }

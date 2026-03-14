@@ -118,9 +118,9 @@ export interface SceneProgress {
 
 // --- Wizard types ---
 
-export type DiscoveryMode = "playlists" | "scene" | "merge";
+export type DiscoveryMode = "playlists" | "scene" | "merge" | "download";
 
-export type WizardStep = "search" | "scene" | "merge" | "select" | "preview" | "create";
+export type WizardStep = "search" | "scene" | "merge" | "download" | "select" | "preview" | "create";
 
 export interface WizardState {
   discoveryMode: DiscoveryMode;

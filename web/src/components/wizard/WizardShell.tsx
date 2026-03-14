@@ -13,6 +13,7 @@ import { PreviewStep } from "./PreviewStep";
 import { CreateStep } from "./CreateStep";
 import { SceneStep } from "./SceneStep";
 import { MergeStep } from "./MergeStep";
+import { DownloadStep } from "./DownloadStep";
 import type {
   DiscoveryMode,
   MyPlaylist,
@@ -159,7 +160,9 @@ export function WizardShell() {
             ? "search"
             : mode === "scene"
               ? "scene"
-              : "merge",
+              : mode === "merge"
+                ? "merge"
+                : "download",
       });
     },
     [dispatch]
@@ -227,10 +230,23 @@ export function WizardShell() {
         >
           Merge Playlists
         </button>
+        <button
+          onClick={() => handleModeChange("download")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            state.discoveryMode === "download"
+              ? "bg-orange-500 text-white"
+              : "text-zinc-400 hover:text-white"
+          }`}
+        >
+          Download Track
+        </button>
       </div>
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8">
+      {/* Download mode is standalone — no wizard steps */}
+      {state.discoveryMode === "download" && <DownloadStep />}
+
+      {/* Step indicator (hidden for download mode) */}
+      {state.discoveryMode !== "download" && <div className="flex items-center gap-2 mb-8">
         {steps.map((s, i) => (
           <div key={s.key} className="flex items-center gap-2">
             <div
@@ -254,7 +270,7 @@ export function WizardShell() {
             )}
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Step content */}
       {state.step === "search" && (
