@@ -53,6 +53,16 @@ export interface SCTrackRaw {
   comment_count: number | null;
   comments_count?: number | null;
   duration?: number | null; // milliseconds
+  bpm?: number | null;
+  key_signature?: string | null;
+  label_name?: string | null;
+  downloadable?: boolean;
+  download_count?: number | null;
+  is_explicit?: boolean;
+  release?: string | null;
+  release_day?: number | null;
+  release_month?: number | null;
+  release_year?: number | null;
   created_at: string;
   access: string;
   permalink_url: string;

@@ -35,6 +35,12 @@ export function trackToScored(
     createdAt: raw.created_at,
     access: raw.access ?? "playable",
     score,
+    genre: raw.genre ?? "",
+    tagList: raw.tag_list ?? "",
+    bpm: raw.bpm ?? null,
+    keySignature: raw.key_signature ?? null,
+    labelName: raw.label_name ?? null,
+    downloadCount: raw.download_count ?? 0,
     permalinkUrl: raw.permalink_url ?? "",
     artistUrl: raw.permalink_url
       ? raw.permalink_url.split("/").slice(0, -1).join("/")

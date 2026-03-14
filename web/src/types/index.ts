@@ -32,6 +32,12 @@ export interface ScoredTrack {
   createdAt: string;
   access: string;
   score: number;
+  genre: string;
+  tagList: string;
+  bpm: number | null;
+  keySignature: string | null;
+  labelName: string | null;
+  downloadCount: number;
   sourcePlaylistId: number;
   permalinkUrl: string;
   artistUrl: string;

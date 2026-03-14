@@ -377,6 +377,7 @@ export function WizardShell({
           onNext={() => dispatch({ type: "SET_STEP", step: "create" })}
           isAdmin={isAdmin}
           canRemoveTracks={plan !== "free" || role === "admin"}
+          canCustomizeColumns={plan !== "free" || role === "admin"}
         />
       )}
 
