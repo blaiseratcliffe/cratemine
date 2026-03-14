@@ -70,7 +70,17 @@ export default function DashboardPage() {
       <header className="border-b border-zinc-800 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <img src="/cratemine_logo.png" alt="CrateMine" className="h-9" />
-          <UserMenu user={user} isAdmin={scStatus.role === "admin"} onLogout={handleLogout} />
+          <div className="flex items-center gap-3">
+            {scStatus.role !== "admin" && scStatus.plan !== "unlimited" && (
+              <a
+                href="/dashboard/pricing"
+                className="px-4 py-1.5 text-sm font-medium rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white transition-all cursor-pointer"
+              >
+                {scStatus.plan === "free" ? "Upgrade" : "Go Unlimited"}
+              </a>
+            )}
+            <UserMenu user={user} isAdmin={scStatus.role === "admin"} onLogout={handleLogout} />
+          </div>
         </div>
       </header>
 
