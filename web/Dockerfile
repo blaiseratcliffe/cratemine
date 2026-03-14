@@ -3,10 +3,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Railway injects env vars as build args
+# Railway injects env vars as build args — expose them as env vars
 ARG DATABASE_URL
 ARG AUTH_SECRET
 ARG SESSION_SECRET
+ENV DATABASE_URL=$DATABASE_URL
+ENV AUTH_SECRET=$AUTH_SECRET
+ENV SESSION_SECRET=$SESSION_SECRET
 
 COPY package.json package-lock.json* ./
 RUN npm ci --ignore-scripts
