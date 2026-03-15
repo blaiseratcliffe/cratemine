@@ -19,6 +19,7 @@ interface Props {
   onBack: () => void;
   onNext: () => void;
   showGraph?: boolean;
+  canMultiCity?: boolean;
 }
 
 const PHASE_LABELS: Record<SceneProgress["phase"], string> = {
@@ -41,6 +42,7 @@ export function SceneStep({
   onBack,
   onNext,
   showGraph = false,
+  canMultiCity = false,
 }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -94,12 +96,25 @@ export function SceneStep({
           type="text"
           className="w-full bg-zinc-900 border border-zinc-700 rounded-lg p-3 text-white text-lg focus:border-orange-500 focus:outline-none"
           value={config.city}
-          onChange={(e) => onConfigChange({ ...config, city: e.target.value })}
-          placeholder="Bristol, Auckland, Berlin"
+          onChange={(e) => {
+            let val = e.target.value;
+            if (!canMultiCity) val = val.replace(/,/g, "");
+            onConfigChange({ ...config, city: val });
+          }}
+          placeholder={canMultiCity ? "Bristol, Auckland, Berlin" : "Bristol"}
           disabled={progress.isRunning}
         />
         <p className="text-xs text-zinc-500 mt-1">
-          Separate multiple cities with commas
+          {canMultiCity ? (
+            "Separate multiple cities with commas"
+          ) : (
+            <>
+              Multi-city search available on{" "}
+              <a href="/dashboard/pricing" className="text-orange-400 hover:text-orange-300 underline">
+                Pro plan
+              </a>
+            </>
+          )}
         </p>
       </div>
 

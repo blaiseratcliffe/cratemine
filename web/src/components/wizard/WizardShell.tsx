@@ -318,6 +318,7 @@ export function WizardShell({
           onBack={() => handleModeChange("playlists")}
           onNext={() => dispatch({ type: "SET_STEP", step: "preview" })}
           showGraph={plan === "unlimited" || role === "admin"}
+          canMultiCity={plan !== "free" || role === "admin"}
         />
       )}
 
