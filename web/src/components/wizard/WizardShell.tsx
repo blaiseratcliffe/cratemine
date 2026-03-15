@@ -404,6 +404,7 @@ export function WizardShell({
           onCreate={handleCreate}
           onBack={() => dispatch({ type: "SET_STEP", step: "preview" })}
           onReset={() => dispatch({ type: "RESET" })}
+          removeBranding={planConfig.removeBranding}
         />
       )}
       </motion.div>

@@ -419,7 +419,19 @@ export function PreviewStep({
             {dedupCount > 0 && ` (${dedupCount} duplicates removed)`}
           </div>
 
-          {/* Column picker */}
+          {/* Column picker or upgrade nudge */}
+          {!canCustomizeColumns && (
+            <a
+              href="/dashboard/pricing"
+              className="flex items-center gap-1 text-xs text-zinc-600 hover:text-orange-400 transition-colors"
+              title="Add Genre, BPM, Key, Label columns"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75M10.5 18a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m3-6h9.75M10.5 12a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12H7.5" />
+              </svg>
+              More columns with Pro
+            </a>
+          )}
           {canCustomizeColumns && (
             <div ref={columnPickerRef} className="relative">
               <button
@@ -537,6 +549,14 @@ export function PreviewStep({
           />
           <span className="text-xs text-zinc-500">sec</span>
         </div>
+        {!canCustomizeColumns && tracks.length > maxTracks && (
+          <>
+            <span className="text-zinc-700">|</span>
+            <a href="/dashboard/pricing" className="text-xs text-zinc-600 hover:text-orange-400 transition-colors">
+              Showing {maxTracks} of {tracks.length.toLocaleString()} — upgrade for more
+            </a>
+          </>
+        )}
       </div>
 
       {/* Track table */}
@@ -584,7 +604,7 @@ export function PreviewStep({
               {isAdmin && (
                 <th className="p-2 text-center text-zinc-400 w-10"></th>
               )}
-              {canRemoveTracks && (
+              {(canRemoveTracks || !canCustomizeColumns) && (
                 <th className="p-2 text-center text-zinc-400 w-10"></th>
               )}
             </tr>
@@ -678,7 +698,7 @@ export function PreviewStep({
                     </button>
                   </td>
                 )}
-                {canRemoveTracks && (
+                {canRemoveTracks ? (
                   <td className="p-2 text-center">
                     <button
                       onClick={() => handleRemoveTrack(t.trackId)}
@@ -689,6 +709,17 @@ export function PreviewStep({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
+                  </td>
+                ) : !canCustomizeColumns && (
+                  <td className="p-2 text-center">
+                    <span
+                      className="text-zinc-800 cursor-default"
+                      title="Remove tracks with Pro — Upgrade at Settings > Pricing"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </span>
                   </td>
                 )}
               </tr>
