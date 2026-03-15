@@ -168,7 +168,20 @@ export function MergeStep({
         will be deduplicated, scored, and sorted.
       </p>
 
-      {/* Add external playlist */}
+      {/* Add external playlist — or upgrade prompt */}
+      {!canAddExternal && (
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-zinc-500">
+            Want to merge playlists from other users?
+          </p>
+          <a
+            href="/dashboard/pricing"
+            className="text-xs px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-orange-400 rounded-lg transition-colors whitespace-nowrap"
+          >
+            Upgrade to Pro
+          </a>
+        </div>
+      )}
       {canAddExternal && (
         <div className="space-y-2">
           <div className="flex flex-col sm:flex-row gap-2">
