@@ -102,6 +102,8 @@ export function WizardShell({
         dispatch({ type: "SET_SCENE_PROGRESS", progress }),
       setSceneUsers: (users: SceneUser[]) =>
         dispatch({ type: "SET_SCENE_USERS", users }),
+      addSceneUsers: (users: SceneUser[]) =>
+        dispatch({ type: "ADD_SCENE_USERS", users }),
       addEdges: (edges: SceneEdge[]) =>
         dispatch({ type: "ADD_SCENE_EDGES", edges }),
       setTracks: (tracks: ScoredTrack[]) =>

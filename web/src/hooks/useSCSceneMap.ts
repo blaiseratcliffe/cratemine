@@ -24,6 +24,7 @@ import {
 interface SceneMapActions {
   setProgress: (progress: Partial<SceneProgress>) => void;
   setSceneUsers: (users: SceneUser[]) => void;
+  addSceneUsers: (users: SceneUser[]) => void;
   addEdges: (edges: SceneEdge[]) => void;
   setTracks: (tracks: ScoredTrack[]) => void;
   addTracks: (tracks: ScoredTrack[]) => void;
@@ -181,6 +182,8 @@ export function useSCSceneMap(actions: SceneMapActions) {
       );
 
       const allFollowings = new Map<number, SCUserFull[]>();
+      // Track followedByCount incrementally for progressive scene member emission
+      const followedByCounts = new Map<number, { user: SCUserFull; count: number }>();
 
       for (let i = 0; i < seeds.length; i++) {
         if (abortRef.current) break;
@@ -204,6 +207,41 @@ export function useSCSceneMap(actions: SceneMapActions) {
           target: u.id,
         }));
         actions.addEdges(edges);
+
+        // Update followedByCount and emit newly qualifying scene members
+        const newlyQualified: SceneUser[] = [];
+        for (const u of followings) {
+          if (seedIds.has(u.id)) continue;
+          const existing = followedByCounts.get(u.id);
+          if (existing) {
+            existing.count++;
+          } else {
+            followedByCounts.set(u.id, { user: u, count: 1 });
+          }
+          const count = followedByCounts.get(u.id)!.count;
+          if (count >= config.minFollowedByCount) {
+            newlyQualified.push({
+              id: u.id,
+              username: u.username,
+              permalinkUrl: u.permalink_url ?? "",
+              city: u.city,
+              followersCount: u.followers_count ?? 0,
+              trackCount: u.track_count ?? 0,
+              followedByCount: count,
+              isSeed: false,
+            });
+          }
+        }
+
+        if (newlyQualified.length > 0) {
+          actions.addSceneUsers(newlyQualified);
+          const totalMembers = [...followedByCounts.values()].filter(
+            (v) => v.count >= config.minFollowedByCount
+          ).length;
+          actions.setProgress({
+            sceneMembersFound: seeds.length + totalMembers,
+          });
+        }
       }
 
       if (abortRef.current) {

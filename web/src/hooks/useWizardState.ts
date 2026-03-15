@@ -61,6 +61,7 @@ type Action =
   | { type: "SELECT_ALL_PLAYLISTS"; selected: boolean }
   | { type: "SET_SCENE_CONFIG"; config: SceneConfig }
   | { type: "SET_SCENE_USERS"; users: SceneUser[] }
+  | { type: "ADD_SCENE_USERS"; users: SceneUser[] }
   | { type: "ADD_SCENE_EDGES"; edges: SceneEdge[] }
   | { type: "SET_SCENE_PROGRESS"; progress: Partial<SceneProgress> }
   | { type: "SET_MY_PLAYLISTS"; playlists: MyPlaylist[] }
@@ -149,6 +150,17 @@ function reducer(state: WizardState, action: Action): WizardState {
       return action.users.length === 0
         ? { ...state, sceneUsers: [], sceneEdges: [] }
         : { ...state, sceneUsers: action.users };
+    case "ADD_SCENE_USERS": {
+      // Upsert: merge new users, update existing with higher followedByCount
+      const existing = new Map(state.sceneUsers.map((u) => [u.id, u]));
+      for (const u of action.users) {
+        const prev = existing.get(u.id);
+        if (!prev || u.followedByCount > prev.followedByCount) {
+          existing.set(u.id, u);
+        }
+      }
+      return { ...state, sceneUsers: Array.from(existing.values()) };
+    }
     case "ADD_SCENE_EDGES":
       return { ...state, sceneEdges: [...state.sceneEdges, ...action.edges] };
     case "SET_SCENE_PROGRESS":
