@@ -22,6 +22,7 @@ interface Props {
   nodes: SceneUser[];
   edges: SceneEdge[];
   phase: SceneProgress["phase"];
+  progress?: SceneProgress;
 }
 
 /** Mulberry32-based hash from node id + salt to a stable 0-1 value */
@@ -33,23 +34,39 @@ function idHash(id: number, salt: number): number {
   return t / 0xffffffff;
 }
 
+/** Phase labels for the canvas overlay */
+const SCATTER_PHASE_LABELS: Record<string, string> = {
+  idle: "",
+  seeds: "Discovering seeds",
+  graph: "Mapping connections",
+  tracks: "Fetching tracks",
+  done: "Discovery complete",
+};
+
 /**
- * Enhanced SeedScatter: topology-aware layout with animated edges and node entrances.
- * Renders during Phase 1-2 as the graph is being built.
- * Seeds on a circle, scene members positioned near their connected seeds.
+ * Enhanced SeedScatter: topology-aware layout with animated edges, node entrances,
+ * visual state changes, phase indicators, and hover interactions.
+ * Renders during Phase 1-3, hands off positions to ForceGraph2D at Phase done.
  */
 function SeedScatter({
   nodes,
   edges,
   width,
+  phase,
+  progress,
+  onPositions,
 }: {
   nodes: SceneUser[];
   edges: SceneEdge[];
   width: number;
+  phase: SceneProgress["phase"];
+  progress?: SceneProgress;
+  onPositions?: (positions: Map<number, { x: number; y: number }>) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nodeFirstSeen = useRef(new Map<number, number>());
   const edgeFirstSeen = useRef(new Map<string, number>());
+  const nodeTargetRadius = useRef(new Map<number, { target: number; prev: number; changeTime: number }>());
   const rafRef = useRef<number>(0);
   const [hovered, setHovered] = useState<SceneUser | null>(null);
   const mousePos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -59,6 +76,7 @@ function SeedScatter({
     if (nodes.length === 0) {
       nodeFirstSeen.current.clear();
       edgeFirstSeen.current.clear();
+      nodeTargetRadius.current.clear();
     }
   }, [nodes.length]);
 
@@ -70,23 +88,20 @@ function SeedScatter({
     const cy = GRAPH_HEIGHT / 2;
     const circleRadius = Math.min(width, GRAPH_HEIGHT) * 0.33;
 
-    // Separate seeds and members
     const seeds = nodes.filter((n) => n.isSeed);
     const members = nodes.filter((n) => !n.isSeed);
 
-    // Place seeds on a circle, sorted by ID for stability
     const sortedSeeds = [...seeds].sort((a, b) => a.id - b.id);
     const angleStep = sortedSeeds.length > 0 ? (2 * Math.PI) / sortedSeeds.length : 0;
 
     for (let i = 0; i < sortedSeeds.length; i++) {
-      const angle = i * angleStep - Math.PI / 2; // start at top
+      const angle = i * angleStep - Math.PI / 2;
       map.set(sortedSeeds[i].id, {
         x: cx + circleRadius * Math.cos(angle),
         y: cy + circleRadius * Math.sin(angle),
       });
     }
 
-    // Build a quick lookup: which seeds connect to each member
     const memberSeeds = new Map<number, number[]>();
     for (const e of edges) {
       if (map.has(e.source) && !map.has(e.target)) {
@@ -96,35 +111,26 @@ function SeedScatter({
       }
     }
 
-    // Place members near centroid of connected seeds
     for (const member of members) {
       const connectedSeedIds = memberSeeds.get(member.id) || [];
       const connectedPositions = connectedSeedIds
         .map((id) => map.get(id))
         .filter(Boolean) as { x: number; y: number }[];
 
-      let x: number;
-      let y: number;
-
+      let x: number, y: number;
       if (connectedPositions.length > 0) {
-        // Centroid of connected seeds
         const centX = connectedPositions.reduce((s, p) => s + p.x, 0) / connectedPositions.length;
         const centY = connectedPositions.reduce((s, p) => s + p.y, 0) / connectedPositions.length;
-
-        // Deterministic offset from centroid
         const offsetAngle = idHash(member.id, 3) * 2 * Math.PI;
         const offsetDist = connectedPositions.length > 1
-          ? 20 + idHash(member.id, 4) * 30  // closer if multi-connected
-          : 60 + idHash(member.id, 4) * 60;  // further if single seed
+          ? 20 + idHash(member.id, 4) * 30
+          : 60 + idHash(member.id, 4) * 60;
         x = centX + offsetDist * Math.cos(offsetAngle);
         y = centY + offsetDist * Math.sin(offsetAngle);
       } else {
-        // Fallback: hash-based scatter
         x = pad + idHash(member.id, 1) * (width - pad * 2);
         y = pad + idHash(member.id, 2) * (GRAPH_HEIGHT - pad * 2);
       }
-
-      // Clamp to canvas bounds
       x = Math.max(pad, Math.min(width - pad, x));
       y = Math.max(pad, Math.min(GRAPH_HEIGHT - pad, y));
       map.set(member.id, { x, y });
@@ -133,11 +139,29 @@ function SeedScatter({
     return map;
   }, [nodes, edges, width]);
 
-  // Filter edges to only those with both endpoints in the node set
+  // Report positions to parent for ForceGraph2D handoff
+  useEffect(() => {
+    if (onPositions && positionMap.size > 0) {
+      onPositions(positionMap);
+    }
+  }, [positionMap, onPositions]);
+
   const filteredEdges = useMemo(() => {
     const nodeIds = new Set(nodes.map((n) => n.id));
     return edges.filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
   }, [nodes, edges]);
+
+  // Determine which seed is currently being crawled (by username match)
+  const currentCrawlId = useMemo(() => {
+    if (!progress?.currentUser) return null;
+    const name = progress.currentUser.replace(" (expanded)", "");
+    const match = nodes.find((n) => n.isSeed && n.username === name);
+    return match?.id ?? null;
+  }, [progress?.currentUser, nodes]);
+
+  // Track which members have been "fetched" during Phase 3
+  const membersFetchedCount = phase === "tracks" ? (progress?.completed ?? 0) : 0;
+  const nonSeedNodes = useMemo(() => nodes.filter((n) => !n.isSeed), [nodes]);
 
   // Animation render loop
   useEffect(() => {
@@ -158,7 +182,7 @@ function SeedScatter({
       const now = performance.now();
       ctx.clearRect(0, 0, width, GRAPH_HEIGHT);
 
-      // --- Draw edges FIRST (behind nodes) ---
+      // --- Draw edges ---
       for (const edge of filteredEdges) {
         const key = `${edge.source}-${edge.target}`;
         if (!edgeFirstSeen.current.has(key)) {
@@ -170,8 +194,6 @@ function SeedScatter({
 
         const elapsed = now - edgeFirstSeen.current.get(key)!;
         const t = Math.min(elapsed / 250, 1);
-
-        // Partial line from source toward target
         const endX = sourcePos.x + (targetPos.x - sourcePos.x) * t;
         const endY = sourcePos.y + (targetPos.y - sourcePos.y) * t;
 
@@ -184,76 +206,172 @@ function SeedScatter({
       }
 
       // --- Draw nodes ---
-      for (const node of nodes) {
+      for (let ni = 0; ni < nodes.length; ni++) {
+        const node = nodes[ni];
         if (!nodeFirstSeen.current.has(node.id)) {
           nodeFirstSeen.current.set(node.id, now);
         }
         const pos = positionMap.get(node.id);
         if (!pos) continue;
 
+        // Entrance animation
         const elapsed = now - nodeFirstSeen.current.get(node.id)!;
         const t = Math.min(elapsed / 180, 1);
-        const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        const eased = 1 - Math.pow(1 - t, 3);
 
-        const baseRadius = node.isSeed
-          ? 5
+        // Radius with smooth growth animation
+        const targetR = node.isSeed
+          ? 5.5
           : Math.max(2, Math.min(1 + node.followedByCount * 1.5, 8));
-        const r = baseRadius * eased;
 
-        if (r < 0.5) continue; // too small to see
+        const rState = nodeTargetRadius.current.get(node.id);
+        let currentR: number;
+        if (!rState) {
+          nodeTargetRadius.current.set(node.id, { target: targetR, prev: targetR, changeTime: now });
+          currentR = targetR;
+        } else if (rState.target !== targetR) {
+          rState.prev = rState.target;
+          rState.target = targetR;
+          rState.changeTime = now;
+          currentR = targetR;
+        } else {
+          const growElapsed = now - rState.changeTime;
+          const growT = Math.min(growElapsed / 200, 1);
+          currentR = rState.prev + (rState.target - rState.prev) * growT;
+        }
 
+        const r = currentR * eased;
+        if (r < 0.5) continue;
+
+        // Is this node hovered?
+        const isHovered = hovered?.id === node.id;
+        const drawR = isHovered ? r * 1.3 : r;
+
+        // Determine node color
+        let fillColor: string;
+        if (node.isSeed) {
+          fillColor = "#f97316";
+        } else if (phase === "tracks") {
+          // Phase 3: wave of brightening for fetched members
+          const memberIdx = nonSeedNodes.indexOf(node);
+          const isFetched = memberIdx >= 0 && memberIdx < membersFetchedCount;
+          fillColor = isFetched ? "#dcdcff" : "#a1a1aa";
+        } else {
+          fillColor = "#a1a1aa";
+        }
+
+        // Draw node
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
-        ctx.fillStyle = node.isSeed ? "#f97316" : "#a1a1aa";
+        ctx.arc(pos.x, pos.y, drawR, 0, 2 * Math.PI);
+        ctx.fillStyle = fillColor;
         ctx.fill();
 
-        // Labels: show once animation is mostly done
+        // Pulse effect on currently crawled seed
+        if (node.isSeed && node.id === currentCrawlId && phase === "graph") {
+          const pulseT = (Math.sin(now / 300) + 1) / 2; // 0-1 oscillation
+          const pulseR = drawR + 4 + pulseT * 4;
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, pulseR, 0, 2 * Math.PI);
+          ctx.strokeStyle = `rgba(249, 115, 22, ${0.15 + pulseT * 0.3})`;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // Labels
         if (eased > 0.5) {
           ctx.font = "11px sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "top";
           ctx.fillStyle = node.isSeed ? "#fb923c" : "#71717a";
           ctx.globalAlpha = eased;
-          ctx.fillText(node.username, pos.x, pos.y + r + 2);
+          ctx.fillText(node.username, pos.x, pos.y + drawR + 2);
           ctx.globalAlpha = 1;
         }
+      }
+
+      // --- Phase indicator overlay (bottom-left) ---
+      if (phase !== "idle" && phase !== "done" && progress) {
+        const phaseLabel = SCATTER_PHASE_LABELS[phase] || "";
+        let detail = "";
+        if (phase === "seeds") {
+          detail = `Seeds: ${progress.seedsFound}`;
+        } else if (phase === "graph") {
+          detail = `Seed ${progress.completed}/${progress.total} · Members: ${progress.sceneMembersFound - progress.seedsFound}`;
+        } else if (phase === "tracks") {
+          detail = `Tracks: ${progress.completed}/${progress.total} members · ${progress.tracksFound} tracks`;
+        }
+
+        const text = `${phaseLabel} · ${detail}`;
+        ctx.font = "12px sans-serif";
+        const m = ctx.measureText(text);
+        const px = 12;
+        const py = GRAPH_HEIGHT - 16;
+        const pw = m.width + 16;
+        const ph = 24;
+
+        ctx.fillStyle = "rgba(9, 9, 11, 0.75)";
+        ctx.beginPath();
+        ctx.roundRect(px, py - ph + 4, pw, ph, 6);
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(228, 228, 231, 0.8)";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, px + 8, py - ph / 2 + 4);
       }
 
       // --- Hover tooltip ---
       if (hovered) {
         const pos = positionMap.get(hovered.id);
         if (pos) {
-          const tx = mousePos.current.x + 12;
-          const ty = mousePos.current.y - 10;
-          const label = `${hovered.username} · ${hovered.followersCount.toLocaleString()} followers`;
+          const tx = mousePos.current.x + 14;
+          const ty = mousePos.current.y - 12;
+          const line1 = hovered.username;
+          const line2 = `${hovered.followersCount.toLocaleString()} followers${!hovered.isSeed ? ` · ${hovered.followedByCount} connections` : ""}`;
+          ctx.font = "bold 11px sans-serif";
+          const m1 = ctx.measureText(line1);
           ctx.font = "11px sans-serif";
-          const metrics = ctx.measureText(label);
-          const pw = metrics.width + 12;
-          const ph = 20;
+          const m2 = ctx.measureText(line2);
+          const pw = Math.max(m1.width, m2.width) + 16;
+          const ph = 34;
 
-          ctx.fillStyle = "rgba(24, 24, 27, 0.9)";
+          ctx.fillStyle = "rgba(24, 24, 27, 0.92)";
           ctx.beginPath();
-          ctx.roundRect(tx, ty - ph / 2, pw, ph, 4);
+          ctx.roundRect(tx, ty - ph / 2, pw, ph, 5);
           ctx.fill();
+          ctx.strokeStyle = "rgba(63, 63, 70, 0.5)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
 
-          ctx.fillStyle = "#e4e4e7";
+          ctx.font = "bold 11px sans-serif";
+          ctx.fillStyle = "#ffffff";
           ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.fillText(label, tx + 6, ty);
+          ctx.textBaseline = "top";
+          ctx.fillText(line1, tx + 8, ty - ph / 2 + 5);
+          ctx.font = "11px sans-serif";
+          ctx.fillStyle = "#a1a1aa";
+          ctx.fillText(line2, tx + 8, ty - ph / 2 + 19);
         }
       }
 
-      // Continue loop if any animation still running
-      const hasActiveNodeAnim = nodes.some((n) => {
-        const ts = nodeFirstSeen.current.get(n.id);
-        return ts !== undefined && now - ts < 200;
-      });
-      const hasActiveEdgeAnim = filteredEdges.some((e) => {
-        const ts = edgeFirstSeen.current.get(`${e.source}-${e.target}`);
-        return ts !== undefined && now - ts < 300;
-      });
+      // Continue loop while there are active animations or continuous effects
+      const needsLoop =
+        phase === "graph" || // pulse effect needs continuous rendering
+        phase === "tracks" || // fetched wave needs updates
+        hovered ||
+        nodes.some((n) => {
+          const ts = nodeFirstSeen.current.get(n.id);
+          return ts !== undefined && now - ts < 200;
+        }) ||
+        filteredEdges.some((e) => {
+          const ts = edgeFirstSeen.current.get(`${e.source}-${e.target}`);
+          return ts !== undefined && now - ts < 300;
+        }) ||
+        [...nodeTargetRadius.current.values()].some(
+          (s) => now - s.changeTime < 220
+        );
 
-      if (hasActiveNodeAnim || hasActiveEdgeAnim || hovered) {
+      if (needsLoop) {
         rafRef.current = requestAnimationFrame(draw);
       }
     }
@@ -264,16 +382,14 @@ function SeedScatter({
       running = false;
       cancelAnimationFrame(rafRef.current);
     };
-  }, [nodes, edges, width, positionMap, filteredEdges, hovered]);
+  }, [nodes, edges, width, positionMap, filteredEdges, hovered, phase, progress, currentCrawlId, membersFetchedCount, nonSeedNodes]);
 
-  // Mouse handlers for hover and click
   const getNodeAt = useCallback(
     (mx: number, my: number): SceneUser | null => {
       for (const node of nodes) {
         const pos = positionMap.get(node.id);
         if (!pos) continue;
-        const dist = Math.sqrt((mx - pos.x) ** 2 + (my - pos.y) ** 2);
-        if (dist < 15) return node;
+        if (Math.sqrt((mx - pos.x) ** 2 + (my - pos.y) ** 2) < 15) return node;
       }
       return null;
     },
@@ -282,37 +398,29 @@ function SeedScatter({
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const node = getNodeAt(mx, my);
-      if (node?.permalinkUrl) {
-        window.open(node.permalinkUrl, "_blank", "noopener,noreferrer");
-      }
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const node = getNodeAt(e.clientX - rect.left, e.clientY - rect.top);
+      if (node?.permalinkUrl) window.open(node.permalinkUrl, "_blank", "noopener,noreferrer");
     },
     [getNodeAt]
   );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       mousePos.current = { x: mx, y: my };
       const node = getNodeAt(mx, my);
       setHovered(node);
-      canvas.style.cursor = node ? "pointer" : "default";
+      if (canvasRef.current) canvasRef.current.style.cursor = node ? "pointer" : "default";
     },
     [getNodeAt]
   );
 
-  const handleMouseLeave = useCallback(() => {
-    setHovered(null);
-  }, []);
+  const handleMouseLeave = useCallback(() => setHovered(null), []);
 
   return (
     <canvas
@@ -330,13 +438,14 @@ function SeedScatter({
  * - During "graph" phase (crawling): static circle of seeds
  * - After crawling (tracks/done): force-directed network
  */
-export function SceneGraph({ nodes, edges, phase }: Props) {
+export function SceneGraph({ nodes, edges, phase, progress }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fgRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(800);
   const [groupByCity, setGroupByCity] = useState(false);
   const [hoveredCity, setHoveredCity] = useState<string | null>(null);
+  const seedScatterPositions = useRef<Map<number, { x: number; y: number }>>(new Map());
 
   // Track container width
   useEffect(() => {
@@ -351,7 +460,7 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
     return () => ro.disconnect();
   }, []);
 
-  const showForceGraph = phase === "tracks" || phase === "done";
+  const showForceGraph = phase === "done";
 
   // Compute city cluster positions (normalized)
   const cityClusterInfo = useMemo(() => {
@@ -439,15 +548,20 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
     }
 
     return {
-      nodes: nodes.map((n) => ({
-        id: n.id,
-        username: n.username,
-        permalinkUrl: n.permalinkUrl,
-        city: n.city,
-        isSeed: n.isSeed,
-        followedByCount: n.followedByCount,
-        val: n.isSeed ? 8 : Math.max(2, Math.min(n.followedByCount * 2, 12)),
-      })),
+      nodes: nodes.map((n) => {
+        // Inject SeedScatter positions for smooth handoff
+        const scatterPos = seedScatterPositions.current.get(n.id);
+        return {
+          id: n.id,
+          username: n.username,
+          permalinkUrl: n.permalinkUrl,
+          city: n.city,
+          isSeed: n.isSeed,
+          followedByCount: n.followedByCount,
+          val: n.isSeed ? 8 : Math.max(2, Math.min(n.followedByCount * 2, 12)),
+          ...(scatterPos ? { x: scatterPos.x, y: scatterPos.y } : {}),
+        };
+      }),
       links: Array.from(edgeMap.values()),
     };
   }, [nodes, edges, showForceGraph]);
@@ -543,7 +657,14 @@ export function SceneGraph({ nodes, edges, phase }: Props) {
         </button>
       )}
       {!showForceGraph ? (
-        <SeedScatter nodes={nodes} edges={edges} width={width} />
+        <SeedScatter
+          nodes={nodes}
+          edges={edges}
+          width={width}
+          phase={phase}
+          progress={progress}
+          onPositions={(positions) => { seedScatterPositions.current = positions; }}
+        />
       ) : (
         <ForceGraph2D
           ref={fgRef}

@@ -311,6 +311,7 @@ export function SceneStep({
                 nodes={sceneUsers}
                 edges={sceneEdges}
                 phase={progress.phase}
+                progress={progress}
               />
             </div>
           )}
