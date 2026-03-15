@@ -20,7 +20,7 @@ interface UserRow {
 }
 
 export default function AdminPage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -110,6 +110,8 @@ export default function AdminPage() {
       setUsers((prev) =>
         prev.map((u) => (u.id === session.user.id ? { ...u, plan } : u))
       );
+      // Refresh the Auth.js session so plan propagates everywhere
+      await updateSession();
     } catch {
       alert("Failed to switch plan");
     } finally {

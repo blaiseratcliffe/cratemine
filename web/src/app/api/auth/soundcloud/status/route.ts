@@ -8,19 +8,30 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const sc = await prisma.soundCloudAccount.findUnique({
-    where: { userId: session.user.id },
+  // Read plan and role directly from DB (not session cache) for freshness
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
     select: {
-      scUserId: true,
-      scUsername: true,
-      scAvatarUrl: true,
+      role: true,
+      plan: true,
+      soundcloudAccount: {
+        select: {
+          scUserId: true,
+          scUsername: true,
+          scAvatarUrl: true,
+        },
+      },
     },
   });
 
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   return NextResponse.json({
-    linked: !!sc,
-    soundcloud: sc,
-    role: session.user.role || "user",
-    plan: (session.user as { plan?: string }).plan || "free",
+    linked: !!user.soundcloudAccount,
+    soundcloud: user.soundcloudAccount,
+    role: user.role,
+    plan: user.plan,
   });
 }

@@ -23,12 +23,15 @@ export default function DashboardPage() {
   const [scStatus, setScStatus] = useState<SCStatus | null>(null);
   const router = useRouter();
 
+  // Fetch SC status — also re-fetch on window focus (e.g. returning from admin page)
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/");
       return;
     }
-    if (status === "authenticated") {
+
+    function fetchStatus() {
+      if (status !== "authenticated") return;
       fetch("/api/auth/soundcloud/status")
         .then((r) => r.json())
         .then((data) => {
@@ -40,6 +43,14 @@ export default function DashboardPage() {
         })
         .catch(() => router.push("/"));
     }
+
+    fetchStatus();
+
+    function handleFocus() {
+      fetchStatus();
+    }
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [status, router]);
 
   async function handleLogout() {
