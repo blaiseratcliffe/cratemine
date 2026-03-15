@@ -41,6 +41,24 @@ export function useSCSceneMap(actions: SceneMapActions) {
 
   const discover = useCallback(
     async (config: SceneConfig, weights: ScoringWeights) => {
+      // Check daily usage limit
+      try {
+        const usageRes = await fetch("/api/usage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "scene_discovery" }),
+        });
+        if (usageRes.ok) {
+          const usage = await usageRes.json();
+          if (!usage.allowed) {
+            alert(usage.message || "Daily discovery limit reached. Upgrade for more.");
+            return;
+          }
+        }
+      } catch {
+        // If usage check fails, allow discovery to proceed
+      }
+
       abortRef.current = false;
 
       actions.setTracks([]);

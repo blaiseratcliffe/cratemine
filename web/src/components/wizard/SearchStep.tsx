@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SearchConfig, WizardState } from "@/types";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SavedSearches } from "@/components/ui/SavedSearches";
+import { UsageCounter } from "@/components/ui/UsageCounter";
 
 interface Props {
   config: SearchConfig;
@@ -73,7 +74,10 @@ export function SearchStep({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-white">Search Playlists</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-white">Search Playlists</h2>
+        <UsageCounter type="playlistSearch" />
+      </div>
 
       <SavedSearches
         type="playlist_search"

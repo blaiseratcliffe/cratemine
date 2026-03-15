@@ -5,6 +5,7 @@ import type { SceneConfig, SceneEdge, SceneProgress, SceneUser } from "@/types";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { SavedSearches } from "@/components/ui/SavedSearches";
+import { UsageCounter } from "@/components/ui/UsageCounter";
 import { SceneGraph } from "./SceneGraph";
 
 interface Props {
@@ -73,7 +74,10 @@ export function SceneStep({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-white">Scene Discovery</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-white">Scene Discovery</h2>
+        <UsageCounter type="sceneDiscovery" />
+      </div>
 
       <SavedSearches
         type="scene_discovery"

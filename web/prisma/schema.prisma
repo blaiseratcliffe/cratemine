@@ -16,6 +16,13 @@ model User {
   image         String?
   role          String    @default("user") // "user" or "admin"
   plan          String    @default("free") // "free", "pro", "unlimited"
+
+  // Daily usage counters (reset when date changes)
+  playlistSearchCount  Int     @default(0)
+  playlistSearchDate   String? // "2026-03-14"
+  sceneDiscoveryCount  Int     @default(0)
+  sceneDiscoveryDate   String? // "2026-03-14"
+
   accounts      Account[]
   sessions      Session[]
 

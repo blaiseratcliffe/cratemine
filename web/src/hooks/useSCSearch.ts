@@ -26,6 +26,24 @@ export function useSCSearch(actions: SearchActions) {
 
   const search = useCallback(
     async (config: SearchConfig) => {
+      // Check daily usage limit
+      try {
+        const usageRes = await fetch("/api/usage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "playlist_search" }),
+        });
+        if (usageRes.ok) {
+          const usage = await usageRes.json();
+          if (!usage.allowed) {
+            alert(usage.message || "Daily search limit reached. Upgrade for more.");
+            return;
+          }
+        }
+      } catch {
+        // If usage check fails, allow the search to proceed
+      }
+
       abortRef.current = false;
       actions.setPlaylists([]);
       actions.setProgress({

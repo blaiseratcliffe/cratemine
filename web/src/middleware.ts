@@ -7,6 +7,7 @@ export const config = {
     "/api/auth/me",
     "/api/admin/:path*",
     "/api/saved-searches/:path*",
+    "/api/usage",
     "/dashboard/:path*",
     "/link-soundcloud",
   ],
