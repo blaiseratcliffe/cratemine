@@ -150,8 +150,10 @@ export default function PricingPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {PLANS.map((p) => {
+          {PLANS.map((p, planIndex) => {
             const isCurrent = p.plan === currentPlan;
+            const currentPlanIndex = PLANS.findIndex((pp) => pp.plan === currentPlan);
+            const isUpgrade = planIndex > currentPlanIndex;
             const priceId = p.priceKey && priceIds ? priceIds[p.priceKey] : null;
 
             return (
@@ -204,7 +206,7 @@ export default function PricingPage() {
                     <div className="w-full py-2 text-center text-sm text-zinc-500 border border-zinc-700 rounded-lg">
                       Current plan
                     </div>
-                  ) : priceId ? (
+                  ) : isUpgrade && priceId ? (
                     <button
                       onClick={() => handleUpgrade(priceId)}
                       disabled={!!loading}
@@ -216,9 +218,13 @@ export default function PricingPage() {
                     >
                       {loading === priceId ? "Loading..." : "Upgrade"}
                     </button>
-                  ) : p.priceKey ? (
+                  ) : isUpgrade && p.priceKey ? (
                     <div className="w-full py-2 text-center text-sm text-zinc-600">
                       Loading...
+                    </div>
+                  ) : !isUpgrade && !isCurrent ? (
+                    <div className="w-full py-2 text-center text-sm text-zinc-600">
+                      Included in your plan
                     </div>
                   ) : (
                     <div className="w-full py-2 text-center text-sm text-zinc-600">
