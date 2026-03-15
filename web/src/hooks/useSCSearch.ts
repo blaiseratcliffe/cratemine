@@ -19,6 +19,7 @@ interface SearchActions {
     isRunning?: boolean;
     foundNames?: string[];
   }) => void;
+  onError?: (message: string) => void;
 }
 
 export function useSCSearch(actions: SearchActions) {
@@ -36,7 +37,7 @@ export function useSCSearch(actions: SearchActions) {
         if (usageRes.ok) {
           const usage = await usageRes.json();
           if (!usage.allowed) {
-            alert(usage.message || "Daily search limit reached. Upgrade for more.");
+            actions.onError?.(usage.message || "Daily search limit reached. Upgrade for more.");
             return;
           }
         }

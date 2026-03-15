@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 
 interface PriceIds {
   pro: string | null;
@@ -67,6 +68,8 @@ export default function PricingPage() {
   const [priceIds, setPriceIds] = useState<PriceIds | null>(null);
   const router = useRouter();
 
+  const { toast } = useToast();
+
   useEffect(() => {
     fetch("/api/stripe/prices")
       .then((r) => r.json())
@@ -96,7 +99,7 @@ export default function PricingPage() {
       const data = await res.json();
       if (data.url) window.location.href = data.url;
     } catch {
-      alert("Failed to start checkout. Please try again.");
+      toast("Failed to start checkout. Please try again.", "error");
     } finally {
       setLoading(null);
     }
@@ -110,7 +113,7 @@ export default function PricingPage() {
       const data = await res.json();
       if (data.url) window.location.href = data.url;
     } catch {
-      alert("Failed to open billing portal.");
+      toast("Failed to open billing portal.", "error");
     } finally {
       setLoading(null);
     }

@@ -28,6 +28,7 @@ interface SceneMapActions {
   addEdges: (edges: SceneEdge[]) => void;
   setTracks: (tracks: ScoredTrack[]) => void;
   addTracks: (tracks: ScoredTrack[]) => void;
+  onError?: (message: string) => void;
 }
 
 /** Max pages to paginate per search query */
@@ -51,7 +52,7 @@ export function useSCSceneMap(actions: SceneMapActions) {
         if (usageRes.ok) {
           const usage = await usageRes.json();
           if (!usage.allowed) {
-            alert(usage.message || "Daily discovery limit reached. Upgrade for more.");
+            actions.onError?.(usage.message || "Daily discovery limit reached. Upgrade for more.");
             return;
           }
         }

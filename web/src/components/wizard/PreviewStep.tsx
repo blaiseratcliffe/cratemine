@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ScoredTrack, ScoringWeights } from "@/types";
 import { mergeTracks } from "@/lib/soundcloud/scoring";
+import { useToast } from "@/components/ui/Toast";
 
 interface Props {
   tracks: ScoredTrack[];
@@ -224,6 +225,7 @@ export function PreviewStep({
   const [playingTrackId, setPlayingTrackId] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField>("score");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const { toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [minDuration, setMinDuration] = useState(30);
   const [maxDuration, setMaxDuration] = useState(600);
@@ -319,7 +321,7 @@ export function PreviewStep({
       const res = await fetch(`/api/sc/tracks/${track.trackId}/stream`);
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        alert(err?.error || "Failed to download track");
+        toast(err?.error || "Failed to download track", "error");
         return;
       }
       const blob = await res.blob();
@@ -343,7 +345,7 @@ export function PreviewStep({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      alert("Download failed");
+      toast("Download failed", "error");
     } finally {
       setDownloadingId(null);
     }

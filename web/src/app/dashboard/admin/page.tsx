@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 
 interface UserRow {
   id: string;
@@ -25,6 +26,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [switchingPlan, setSwitchingPlan] = useState<string | null>(null);
+  const { toast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
@@ -68,7 +70,7 @@ export default function AdminPage() {
         prev.map((u) => (u.id === userId ? { ...u, plan } : u))
       );
     } catch {
-      alert("Failed to update plan");
+      toast("Failed to update plan", "error");
     } finally {
       setUpdating(null);
     }
@@ -88,7 +90,7 @@ export default function AdminPage() {
         prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
       );
     } catch {
-      alert("Failed to update role");
+      toast("Failed to update role", "error");
     } finally {
       setUpdating(null);
     }
@@ -113,7 +115,7 @@ export default function AdminPage() {
       // Refresh the Auth.js session so plan propagates everywhere
       await updateSession();
     } catch {
-      alert("Failed to switch plan");
+      toast("Failed to switch plan", "error");
     } finally {
       setSwitchingPlan(null);
     }

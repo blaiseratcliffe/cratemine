@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useToast } from "@/components/ui/Toast";
 import { useWizardState } from "@/hooks/useWizardState";
 import { useSCSearch } from "@/hooks/useSCSearch";
 import { useSCTrackFetch } from "@/hooks/useSCTrackFetch";
@@ -40,6 +41,7 @@ export function WizardShell({
 }) {
   const planConfig = getEffectivePlan(plan, role);
   const [state, dispatch] = useWizardState();
+  const { toast } = useToast();
 
   // --- Search actions ---
   const searchActions = useMemo(
@@ -55,8 +57,9 @@ export function WizardShell({
         isRunning?: boolean;
         foundNames?: string[];
       }) => dispatch({ type: "SET_SEARCH_PROGRESS", progress }),
+      onError: (message: string) => toast(message, "error"),
     }),
-    [dispatch]
+    [dispatch, toast]
   );
 
   const trackActions = useMemo(
@@ -110,8 +113,9 @@ export function WizardShell({
         dispatch({ type: "SET_TRACKS", tracks }),
       addTracks: (tracks: ScoredTrack[]) =>
         dispatch({ type: "ADD_TRACKS", tracks }),
+      onError: (message: string) => toast(message, "error"),
     }),
-    [dispatch]
+    [dispatch, toast]
   );
 
   // --- Merge actions ---
