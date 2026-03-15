@@ -71,6 +71,11 @@ export default function DashboardPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <img src="/cratemine_logo.png" alt="CrateMine" className="h-9" />
           <div className="flex items-center gap-3">
+            {scStatus.role === "admin" && scStatus.plan !== "unlimited" && (
+              <span className="px-3 py-1 text-xs font-medium rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                Testing as {scStatus.plan}
+              </span>
+            )}
             {scStatus.role !== "admin" && scStatus.plan !== "unlimited" && (
               <a
                 href="/dashboard/pricing"

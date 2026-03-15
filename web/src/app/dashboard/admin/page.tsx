@@ -11,6 +11,7 @@ interface UserRow {
   email: string | null;
   image: string | null;
   role: string;
+  plan: string;
   createdAt: string;
   soundcloudAccount: {
     scUsername: string;
@@ -23,6 +24,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [switchingPlan, setSwitchingPlan] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -73,6 +75,29 @@ export default function AdminPage() {
     }
   }
 
+  const myUser = users.find((u) => u.id === session?.user?.id);
+  const myPlan = myUser?.plan || "unlimited";
+
+  async function switchTestPlan(plan: string) {
+    if (!session?.user?.id) return;
+    setSwitchingPlan(plan);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: session.user.id, plan }),
+      });
+      if (!res.ok) throw new Error();
+      setUsers((prev) =>
+        prev.map((u) => (u.id === session.user.id ? { ...u, plan } : u))
+      );
+    } catch {
+      alert("Failed to switch plan");
+    } finally {
+      setSwitchingPlan(null);
+    }
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -109,6 +134,42 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-8">
+        {/* Test mode */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-medium text-white">Test as different plan</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Switches your actual plan for full-stack testing. Remember to switch back.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {(["free", "pro", "unlimited"] as const).map((plan) => (
+                <button
+                  key={plan}
+                  onClick={() => switchTestPlan(plan)}
+                  disabled={myPlan === plan || !!switchingPlan}
+                  className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer capitalize ${
+                    myPlan === plan
+                      ? "bg-orange-500 text-white"
+                      : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white"
+                  } disabled:cursor-default disabled:opacity-70`}
+                >
+                  {switchingPlan === plan ? "..." : plan}
+                </button>
+              ))}
+            </div>
+          </div>
+          {myPlan !== "unlimited" && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-amber-400">
+              <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              Currently testing as <span className="font-medium capitalize">{myPlan}</span> — features are restricted
+            </div>
+          )}
+        </div>
+
         <h1 className="text-2xl font-semibold text-white mb-6">
           User Management
         </h1>
