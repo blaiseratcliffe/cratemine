@@ -55,6 +55,25 @@ export default function AdminPage() {
     }
   }
 
+  async function changeUserPlan(userId: string, plan: string) {
+    setUpdating(userId);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, plan }),
+      });
+      if (!res.ok) throw new Error();
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, plan } : u))
+      );
+    } catch {
+      alert("Failed to update plan");
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   async function toggleRole(userId: string, currentRole: string) {
     const newRole = currentRole === "admin" ? "user" : "admin";
     setUpdating(userId);
@@ -182,6 +201,7 @@ export default function AdminPage() {
                 <th className="p-3 text-left text-zinc-400">Email</th>
                 <th className="p-3 text-left text-zinc-400">SoundCloud</th>
                 <th className="p-3 text-left text-zinc-400">Joined</th>
+                <th className="p-3 text-center text-zinc-400">Plan</th>
                 <th className="p-3 text-center text-zinc-400">Role</th>
                 <th className="p-3 text-center text-zinc-400">Actions</th>
               </tr>
@@ -218,6 +238,18 @@ export default function AdminPage() {
                   </td>
                   <td className="p-3 text-zinc-500 text-xs whitespace-nowrap">
                     {new Date(u.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="p-3 text-center">
+                    <select
+                      value={u.plan}
+                      onChange={(e) => changeUserPlan(u.id, e.target.value)}
+                      disabled={updating === u.id}
+                      className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 cursor-pointer focus:border-orange-500 focus:outline-none capitalize"
+                    >
+                      <option value="free">Free</option>
+                      <option value="pro">Pro</option>
+                      <option value="unlimited">Unlimited</option>
+                    </select>
                   </td>
                   <td className="p-3 text-center">
                     <span

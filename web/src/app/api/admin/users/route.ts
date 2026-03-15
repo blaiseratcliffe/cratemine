@@ -51,11 +51,8 @@ export async function PATCH(request: NextRequest) {
 
   const { userId, role, plan } = await request.json();
 
-  // Plan change (admin testing their own plan)
+  // Plan change
   if (plan && ["free", "pro", "unlimited"].includes(plan)) {
-    if (userId !== session.user.id) {
-      return NextResponse.json({ error: "Can only change your own plan for testing" }, { status: 400 });
-    }
     await prisma.user.update({
       where: { id: userId },
       data: { plan },
